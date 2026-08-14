@@ -1,0 +1,31 @@
+id: basica
+display:
+  name: "<gradient:#FFD700:#FFA500>Crate Basica"
+  engine: VANILLA
+  vanilla:
+    item: DIAMOND_BLOCK
+    scale: [ 0.8, 0.8, 0.8 ]
+price:
+  currency: coins
+  amount: 0
+rewards:
+  diamante:
+    id: diamante
+    type: ITEM
+    item: DIAMOND
+    amount: 1
+    chance: 50.0
+    display-name: "Diamante"
+  moedas:
+    id: moedas
+    type: MONEY
+    currency: coins
+    amount: 100
+    chance: 30.0
+    display-name: "100 Moedas"
+  comando:
+    id: comando
+    type: COMMAND
+    command: "say %player% ganhou na crate"
+    chance: 20.0
+    display-name: "Comando Surpresa"

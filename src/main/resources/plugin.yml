@@ -1,0 +1,22 @@
+name: AlkaCrates
+main: com.alkacode.crates.AlkaCrates
+version: '${version}'
+api-version: 1.21
+folia-supported: true
+author: [ AlkaCode ]
+depend: [ AlkaCore, AlkaEconomy ]
+softdepend: [ PlaceholderAPI, LuckPerms, ItemsAdder, ModelEngine, BetterModel, CraftEngine, Nexo, MMOItems, ExecutableItems, HeadDatabase, MythicMobs ]
+commands:
+  crate:
+    description: Comandos de crates para jogadores.
+    aliases: [ crates ]
+  alkacrates:
+    description: Comandos administrativos de crates.
+    aliases: [ acrates, alkacrate ]
+permissions:
+  alkacrates.admin:
+    description: Acesso administrativo total ao AlkaCrates.
+    default: op
+  alkacrates.use:
+    description: Permite abrir crates.
+    default: true

@@ -1,0 +1,65 @@
+check-update: false
+crates-folder: "crates"
+open-cooldown: 3
+# garantia de recompensa: 0 desativa. >0 = recompensa guaranteed a cada N aberturas.
+pity-opens: 0
+
+default-animation:
+  idle:
+    loop: true
+    keyframes:
+      - time: 0.0
+        transform:
+          offset: [ 0, 0, 0 ]
+          rotation: [ 0, 0, 0 ]
+          scale: [ 1.0, 1.0, 1.0 ]
+      - time: 2.0
+        transform:
+          offset: [ 0, 0.3, 0 ]
+          rotation: [ 0, 180, 0 ]
+          scale: [ 1.1, 1.1, 1.1 ]
+        easing: EASE_IN_OUT
+      - time: 4.0
+        transform:
+          offset: [ 0, 0, 0 ]
+          rotation: [ 0, 360, 0 ]
+          scale: [ 1.0, 1.0, 1.0 ]
+        easing: EASE_IN_OUT
+    particles:
+      - type: WAX_ON
+        interval: 20
+        offset: [ 0.5, 0.5, 0.5 ]
+        count: 3
+  opening:
+    phases:
+      - name: "start"
+        duration: 1.0
+        transform:
+          offset: [ 0, 0.5, 0 ]
+          scale: [ 1.2, 1.2, 1.2 ]
+        easing: EASE_OUT
+        particles:
+          - type: END_ROD
+            count: 20
+        sound: BLOCK_BEACON_ACTIVATE
+      - name: "spin"
+        duration: 3.0
+        transform:
+          rotation: [ 0, 1080, 0 ]
+          scale: [ 1.5, 1.5, 1.5 ]
+        easing: EASE_OUT
+        particles:
+          - type: PORTAL
+            count: 50
+            interval: 5
+      - name: "reveal"
+        duration: 1.5
+        transform:
+          offset: [ 0, 1.5, 0 ]
+          scale: [ 2.0, 2.0, 2.0 ]
+        easing: BOUNCE
+        particles:
+          - type: TOTEM_OF_UNDYING
+            count: 100
+        sound: ENTITY_PLAYER_LEVELUP
+        trigger: REWARD_REVEAL
