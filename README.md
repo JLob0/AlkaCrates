@@ -1,11 +1,19 @@
+<div align="center">
+
 # AlkaCrates
 
-> Sistema completo de crates: chaves virtuais, animações, pity system e recompensas configuráveis
+### Caixas premiadas com estilo, chances justas e pity system
+
+Crates físicas ou virtuais, animação de abertura, chaves virtuais e um
+sistema de pity que garante prêmios raros ao longo do tempo — tudo
+administrável direto pela GUI.
 
 ![Java](https://img.shields.io/badge/Java-21-orange)
 ![Minecraft](https://img.shields.io/badge/Minecraft-1.21.8-green)
 ![Version](https://img.shields.io/badge/Version-1.0.9-blue)
 ![License](https://img.shields.io/badge/License-Proprietary-red)
+
+</div>
 
 ---
 
