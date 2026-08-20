@@ -25,6 +25,16 @@ public final class PlacedCrateManager {
         return placed.get(location);
     }
 
+    /** Busca por tag (AC-###) - poucas crates colocadas em geral, scan linear e suficiente. */
+    public PlacedCrate getByTag(String tag) {
+        for (PlacedCrate crate : placed.values()) {
+            if (tag.equalsIgnoreCase(crate.getTag())) {
+                return crate;
+            }
+        }
+        return null;
+    }
+
     public List<PlacedCrate> getAll() {
         return new ArrayList<>(placed.values());
     }

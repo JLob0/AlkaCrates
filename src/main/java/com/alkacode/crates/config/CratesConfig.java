@@ -24,6 +24,7 @@ public final class CratesConfig {
     private final Map<String, Crate> crates = new HashMap<>();
     private IdleAnimation defaultIdle;
     private OpeningSequence defaultOpening;
+    private boolean warnedMissingOpening;
 
     public CratesConfig(AlkaCrates plugin) {
         this.plugin = plugin;
@@ -39,6 +40,20 @@ public final class CratesConfig {
             if (defaultAnim.getConfigurationSection("opening") != null) {
                 defaultOpening = OpeningSequence.from(defaultAnim.getConfigurationSection("opening"));
             }
+        }
+        // A sequencia de abertura (Phase/Transform/AnimationEngine#playOpening) ficou
+        // dormente - a abertura por key agora e instantanea, sem animacao (ver
+        // CrateService). Mantido so pra nao perder o trabalho caso um "modo com
+        // animacao" volte a ser pedido depois; por isso o fallback ainda existe, mas so
+        // avisa 1x por sessao do plugin (senao cada edicao no GUI, que recarrega tudo,
+        // spammava esse aviso a cada clique).
+        if (defaultOpening == null || defaultOpening.getPhases().isEmpty()) {
+            if (!warnedMissingOpening) {
+                plugin.getLogger().warning("config.yml sem 'default-animation.opening' valido - isso nao afeta "
+                        + "a abertura de crates (que e instantanea agora), so avisando 1x por sessao.");
+                warnedMissingOpening = true;
+            }
+            defaultOpening = OpeningSequence.fallback();
         }
 
         File folder = new File(plugin.getDataFolder(), plugin.getConfig().getString("crates-folder", "crates"));
@@ -90,55 +105,52 @@ public final class CratesConfig {
                 id: basica
                 display:
                   name: "<gradient:#FFD700:#FFA500>Crate Basica"
-                  engine: VANILLA
+                  engine: PHYSICAL_CHEST
                   vanilla:
-                    item: DIAMOND_BLOCK
-                    scale: [ 0.8, 0.8, 0.8 ]
+                    item: CHEST
+                    scale: [ 1.0, 1.0, 1.0 ]
                 price:
-                  currency: coins
+                  currency: gold
                   amount: 0
-                animation:
-                  idle:
-                    loop: true
-                    keyframes:
-                      - time: 0.0
-                        transform:
-                          offset: [ 0, 0, 0 ]
-                          rotation: [ 0, 0, 0 ]
-                          scale: [ 1.0, 1.0, 1.0 ]
-                      - time: 2.0
-                        transform:
-                          offset: [ 0, 0.3, 0 ]
-                          rotation: [ 0, 180, 0 ]
-                          scale: [ 1.1, 1.1, 1.1 ]
-                        easing: EASE_IN_OUT
-                      - time: 4.0
-                        transform:
-                          offset: [ 0, 0, 0 ]
-                          rotation: [ 0, 360, 0 ]
-                          scale: [ 1.0, 1.0, 1.0 ]
-                        easing: EASE_IN_OUT
                 rewards:
                   diamante:
                     id: diamante
                     type: ITEM
                     item: DIAMOND
-                    amount: 1
-                    chance: 50.0
-                    display-name: "Diamante"
+                    amount: 5
+                    chance: 20.0
+                    display-name: "5 Diamantes"
+                  esmeralda:
+                    id: esmeralda
+                    type: ITEM
+                    item: EMERALD
+                    amount: 10
+                    chance: 20.0
+                    display-name: "10 Esmeraldas"
+                  ouro:
+                    id: ouro
+                    type: ITEM
+                    item: GOLD_INGOT
+                    amount: 32
+                    chance: 25.0
+                    display-name: "32 Barras de Ouro"
+                    win-limit: 3
+                    win-limit-cooldown: 3600
                   moedas:
                     id: moedas
                     type: MONEY
-                    currency: coins
-                    amount: 100
-                    chance: 30.0
-                    display-name: "100 Moedas"
-                  comando:
-                    id: comando
-                    type: COMMAND
-                    command: "say %player% ganhou na crate"
+                    currency: gold
+                    amount: 500
                     chance: 20.0
-                    display-name: "Comando Surpresa"
+                    display-name: "500 Moedas"
+                  jackpot:
+                    id: jackpot
+                    type: COMMAND
+                    command: "say %player% ganhou o jackpot na Crate Basica!"
+                    chance: 15.0
+                    display-name: "Jackpot"
+                    global-win-limit: 5
+                    broadcast: true
                 """;
         try {
             Files.writeString(file.toPath(), content, java.nio.charset.StandardCharsets.UTF_8);

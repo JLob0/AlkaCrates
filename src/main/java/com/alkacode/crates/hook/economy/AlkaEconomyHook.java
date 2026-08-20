@@ -11,7 +11,7 @@ import java.util.UUID;
  * Hook para a economia principal da network (AlkaEconomy). Como AlkaEconomy e
  * hard depend no plugin.yml, usamos a API publica direto: pega a instancia do
  * AlkaEconomyPlugin e usa o {@link EconomyManager}. Suporta todas as moedas
- * dinamicas (coins, drakonio, nacar, escarion, souls, e qualquer uma criada).
+ * dinamicas (gold, alkarion, nacar, escarion, soul, e qualquer uma criada).
  */
 public final class AlkaEconomyHook {
 

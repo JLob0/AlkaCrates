@@ -13,8 +13,9 @@ public final class CrateLocation {
     private final double z;
     private final float yaw;
     private final float pitch;
+    private final String tag;
 
-    public CrateLocation(String crateId, String world, double x, double y, double z, float yaw, float pitch) {
+    public CrateLocation(String crateId, String world, double x, double y, double z, float yaw, float pitch, String tag) {
         this.crateId = crateId;
         this.world = world;
         this.x = x;
@@ -22,12 +23,13 @@ public final class CrateLocation {
         this.z = z;
         this.yaw = yaw;
         this.pitch = pitch;
+        this.tag = tag;
     }
 
-    public static CrateLocation fromLocation(String crateId, Location location) {
+    public static CrateLocation fromLocation(String crateId, Location location, String tag) {
         return new CrateLocation(crateId, location.getWorld().getName(),
                 location.getX(), location.getY(), location.getZ(),
-                location.getYaw(), location.getPitch());
+                location.getYaw(), location.getPitch(), tag);
     }
 
     public Location toLocation() {
@@ -45,4 +47,5 @@ public final class CrateLocation {
     public double getZ() { return z; }
     public float getYaw() { return yaw; }
     public float getPitch() { return pitch; }
+    public String getTag() { return tag; }
 }

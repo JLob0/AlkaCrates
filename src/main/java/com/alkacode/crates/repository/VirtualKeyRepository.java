@@ -6,6 +6,8 @@ import com.alkacode.core.database.AbstractRepository;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /** Keys virtuais por jogador (tabela alkacrates_keys). */
@@ -22,6 +24,21 @@ public final class VirtualKeyRepository extends AbstractRepository {
                 + "amount INT NOT NULL DEFAULT 0, "
                 + "PRIMARY KEY (player_uuid, crate_id))";
         execute(sql, ps -> {});
+    }
+
+    /** Carrega todas as keys virtuais de um jogador de uma vez (usado no join, ver VirtualKeyManager). */
+    public Map<String, Integer> loadAll(UUID player) throws SQLException {
+        Map<String, Integer> result = new HashMap<>();
+        String sql = "SELECT crate_id, amount FROM alkacrates_keys WHERE player_uuid = ?";
+        try (var conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, player.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.put(rs.getString("crate_id"), rs.getInt("amount"));
+                }
+            }
+        }
+        return result;
     }
 
     public int getKeys(UUID player, String crateId) throws SQLException {

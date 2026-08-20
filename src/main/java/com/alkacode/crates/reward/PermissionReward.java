@@ -2,8 +2,12 @@ package com.alkacode.crates.reward;
 
 import com.alkacode.crates.AlkaCrates;
 import com.alkacode.crates.crate.model.Reward;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.permissions.PermissionAttachment;
 
 /** Recompensa de permissao temporaria (addPermission por um tempo). */
@@ -34,5 +38,15 @@ public final class PermissionReward implements RewardExecutor {
                 }
             }, (long) (reward.getAmount() * 20));
         }
+    }
+
+    @Override
+    public ItemStack resolveDisplayItem(Reward reward) {
+        ItemStack item = new ItemStack(Material.NAME_TAG);
+        ItemMeta meta = item.getItemMeta();
+        String name = reward.getDisplayName() != null ? reward.getDisplayName() : "<light_purple>Permissao temporaria";
+        meta.displayName(MiniMessage.miniMessage().deserialize("<!i>" + name));
+        item.setItemMeta(meta);
+        return item;
     }
 }

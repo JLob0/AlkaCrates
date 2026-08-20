@@ -10,12 +10,17 @@ import com.alkacode.crates.crate.placement.PlacedCrateManager;
 import com.alkacode.crates.crate.service.CratePlacementService;
 import com.alkacode.crates.crate.service.CrateService;
 import com.alkacode.crates.crate.service.KeyService;
+import com.alkacode.crates.crate.service.PityManager;
 import com.alkacode.crates.crate.service.PityService;
+import com.alkacode.crates.crate.service.RewardPityManager;
+import com.alkacode.crates.crate.service.RewardWinManager;
+import com.alkacode.crates.crate.service.VirtualKeyManager;
 import com.alkacode.crates.engine.BetterModelSpawner;
 import com.alkacode.crates.engine.CraftEngineSpawner;
 import com.alkacode.crates.engine.CrateEngineType;
+import com.alkacode.crates.engine.ItemsAdderFurnitureSpawner;
+import com.alkacode.crates.engine.ModelBasedCrateEngine;
 import com.alkacode.crates.engine.ModelEngineSpawner;
-import com.alkacode.crates.engine.VanillaEngine;
 import com.alkacode.crates.hook.economy.AlkaEconomyHook;
 import com.alkacode.crates.hook.item.AlkaItemsHook;
 import com.alkacode.crates.hook.item.HeadDatabaseHook;
@@ -24,11 +29,18 @@ import com.alkacode.crates.hook.item.ItemsAdderHook;
 import com.alkacode.crates.hook.item.MMOItemsHook;
 import com.alkacode.crates.hook.item.MythicItemsHook;
 import com.alkacode.crates.hook.item.NexoHook;
+import com.alkacode.crates.listener.CrateChatInputListener;
 import com.alkacode.crates.listener.CrateInteractionListener;
+import com.alkacode.crates.listener.CratePlayerDataListener;
+import com.alkacode.crates.listener.CrateProtectionListener;
+import com.alkacode.crates.menu.editor.ChatInputManager;
+import com.alkacode.crates.menu.editor.CrateFileService;
 import com.alkacode.crates.placeholder.CratesExpansion;
 import com.alkacode.crates.repository.CrateLocationRepository;
 import com.alkacode.crates.repository.CrateLogRepository;
 import com.alkacode.crates.repository.PityRepository;
+import com.alkacode.crates.repository.RewardPityRepository;
+import com.alkacode.crates.repository.RewardWinRepository;
 import com.alkacode.crates.repository.VirtualKeyRepository;
 
 import java.util.ArrayList;
@@ -49,8 +61,16 @@ public final class AlkaCrates extends AlkaPlugin {
     private CrateLocationRepository crateLocationRepository;
     private PityRepository pityRepository;
     private CrateLogRepository crateLogRepository;
+    private RewardWinRepository rewardWinRepository;
+    private RewardPityRepository rewardPityRepository;
+    private VirtualKeyManager virtualKeyManager;
+    private PityManager pityManager;
+    private RewardWinManager rewardWinManager;
+    private RewardPityManager rewardPityManager;
     private AlkaEconomyHook economyHook;
     private final List<ItemHook> itemHooks = new ArrayList<>();
+    private CrateFileService crateFileService;
+    private ChatInputManager chatInputManager;
 
     @Override
     protected void onPluginEnable() {
@@ -65,13 +85,29 @@ public final class AlkaCrates extends AlkaPlugin {
         this.crateLocationRepository = new CrateLocationRepository(api.getDatabase());
         this.pityRepository = new PityRepository(api.getDatabase());
         this.crateLogRepository = new CrateLogRepository(api.getDatabase());
+        this.rewardWinRepository = new RewardWinRepository(api.getDatabase());
+        this.rewardPityRepository = new RewardPityRepository(api.getDatabase());
         try {
             virtualKeyRepository.createTable();
             crateLocationRepository.createTable();
             pityRepository.createTable();
             crateLogRepository.createTable();
+            rewardWinRepository.createTable();
+            rewardPityRepository.createTable();
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Falha ao criar tabelas do AlkaCrates", e);
+        }
+
+        this.virtualKeyManager = new VirtualKeyManager(virtualKeyRepository, api.getScheduler(), getLogger());
+        this.pityManager = new PityManager(pityRepository, api.getScheduler(), getLogger());
+        this.rewardWinManager = new RewardWinManager(rewardWinRepository, api.getScheduler(), getLogger());
+        this.rewardPityManager = new RewardPityManager(rewardPityRepository, api.getScheduler(), getLogger());
+        rewardWinManager.loadGlobalOnEnable();
+        for (org.bukkit.entity.Player online : getServer().getOnlinePlayers()) {
+            virtualKeyManager.onJoin(online.getUniqueId());
+            pityManager.onJoin(online.getUniqueId());
+            rewardWinManager.onJoin(online.getUniqueId());
+            rewardPityManager.onJoin(online.getUniqueId());
         }
 
         this.animationEngine = new AnimationEngine(this);
@@ -79,22 +115,30 @@ public final class AlkaCrates extends AlkaPlugin {
         this.economyHook = new AlkaEconomyHook(getServer());
         registerItemHooks();
 
-        this.placementService = new CratePlacementService(this, new VanillaEngine(this));
+        this.placementService = new CratePlacementService(this);
         if (getServer().getPluginManager().isPluginEnabled("ModelEngine")) {
-            placementService.registerModelSpawner(CrateEngineType.MODELENGINE, new ModelEngineSpawner());
-            getLogger().info("Spawner de ModelEngine registrado.");
+            placementService.registerEngine(CrateEngineType.MODELENGINE,
+                    new ModelBasedCrateEngine(new ModelEngineSpawner(), CrateEngineType.MODELENGINE));
+            getLogger().info("Engine de ModelEngine registrada.");
         }
         if (getServer().getPluginManager().isPluginEnabled("BetterModel")) {
-            placementService.registerModelSpawner(CrateEngineType.BETTERMODEL, new BetterModelSpawner());
-            getLogger().info("Spawner de BetterModel registrado.");
+            placementService.registerEngine(CrateEngineType.BETTERMODEL,
+                    new ModelBasedCrateEngine(new BetterModelSpawner(), CrateEngineType.BETTERMODEL));
+            getLogger().info("Engine de BetterModel registrada.");
         }
         if (getServer().getPluginManager().isPluginEnabled("CraftEngine")) {
-            placementService.registerModelSpawner(CrateEngineType.CRAFTENGINE, new CraftEngineSpawner());
-            getLogger().info("Spawner de CraftEngine registrado.");
+            placementService.registerEngine(CrateEngineType.CRAFTENGINE,
+                    new ModelBasedCrateEngine(new CraftEngineSpawner(), CrateEngineType.CRAFTENGINE));
+            getLogger().info("Engine de CraftEngine registrada.");
         }
-        this.crateService = new CrateService(this);
-        this.keyService = new KeyService(this, virtualKeyRepository);
-        this.pityService = new PityService(this, pityRepository);
+        if (getServer().getPluginManager().isPluginEnabled("ItemsAdder")) {
+            placementService.registerEngine(CrateEngineType.ITEMSADDER,
+                    new ModelBasedCrateEngine(new ItemsAdderFurnitureSpawner(), CrateEngineType.ITEMSADDER));
+            getLogger().info("Engine de ItemsAdder (furniture) registrada.");
+        }
+        this.crateService = new CrateService(this, rewardWinManager, rewardPityManager);
+        this.keyService = new KeyService(this, virtualKeyManager);
+        this.pityService = new PityService(this, pityManager);
         this.crateService.setPityService(pityService);
         this.placementService.loadAll();
 
@@ -103,11 +147,24 @@ public final class AlkaCrates extends AlkaPlugin {
         getCommand("alkacrates").setExecutor(new AlkaCratesCommand(this));
         getCommand("alkacrates").setTabCompleter(new AlkaCratesCommand(this));
 
+        this.crateFileService = new CrateFileService(this);
+        this.chatInputManager = new ChatInputManager();
+
         getServer().getPluginManager().registerEvents(new CrateInteractionListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new CrateProtectionListener(this), this);
+        getServer().getPluginManager().registerEvents(
+                new CratePlayerDataListener(virtualKeyManager, pityManager, rewardWinManager, rewardPityManager), this);
+        getServer().getPluginManager().registerEvents(
+                new CrateChatInputListener(this, chatInputManager), this);
 
         if (getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
             new CratesExpansion(this).register();
         }
+
+        getServer().getServicesManager().register(com.alkacode.crates.api.AlkaCratesAPI.class,
+                new com.alkacode.crates.api.AlkaCratesAPIProvider(keyService, cratesConfig),
+                this, org.bukkit.plugin.ServicePriority.Normal);
 
         getLogger().info("AlkaCrates habilitado com " + cratesConfig.getCrates().size() + " crates.");
     }
@@ -150,6 +207,22 @@ public final class AlkaCrates extends AlkaPlugin {
         }
     }
 
+    /**
+     * Recarrega config.yml + crates/*.yml e re-coloca todas as crates fisicas. ANTES
+     * de re-colocar, remove as instancias atuais (`placedCrateManager.removeAll()`) -
+     * sem isso, cada reload duplicava os display entities (ItemDisplay/TextDisplay/
+     * Interaction) de toda crate colocada, ja que `loadAll()` sempre spawna instancias
+     * novas e nunca limpava as antigas. Usado por `/alkacrates reload` e pelo editor
+     * de crates em GUI (toda edicao salva dispara isso pra refletir na hora no mundo).
+     */
+    public void reloadEverything() {
+        reloadConfig();
+        cratesConfig.load();
+        cratesMessages.reload();
+        placedCrateManager.removeAll();
+        placementService.loadAll();
+    }
+
     public CratesConfig getCratesConfig() { return cratesConfig; }
     public CratesMessages getCratesMessages() { return cratesMessages; }
     public AnimationEngine getAnimationEngine() { return animationEngine; }
@@ -162,6 +235,13 @@ public final class AlkaCrates extends AlkaPlugin {
     public CrateLocationRepository getCrateLocationRepository() { return crateLocationRepository; }
     public PityRepository getPityRepository() { return pityRepository; }
     public CrateLogRepository getCrateLogRepository() { return crateLogRepository; }
+    public RewardWinRepository getRewardWinRepository() { return rewardWinRepository; }
+    public VirtualKeyManager getVirtualKeyManager() { return virtualKeyManager; }
+    public PityManager getPityManager() { return pityManager; }
+    public RewardWinManager getRewardWinManager() { return rewardWinManager; }
+    public RewardPityManager getRewardPityManager() { return rewardPityManager; }
     public AlkaEconomyHook getEconomyHook() { return economyHook; }
+    public CrateFileService getCrateFileService() { return crateFileService; }
+    public ChatInputManager getChatInputManager() { return chatInputManager; }
     public List<ItemHook> getItemHooks() { return itemHooks; }
 }

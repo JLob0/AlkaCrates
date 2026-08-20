@@ -22,7 +22,7 @@ import java.util.UUID;
  * entidade modelo adicional (ModelEngine/BetterModel/CraftEngine) como extra.
  * O scheduler de animacao roda na main thread via Bukkit.
  */
-public final class CrateDisplay {
+public class CrateDisplay {
 
     private final Crate crate;
     private final Location location;
@@ -35,11 +35,21 @@ public final class CrateDisplay {
 
     public CrateDisplay(Crate crate, Location location, ItemStack item,
                         String hologram, float[] baseScale, float interactionWidth, float interactionHeight) {
+        this(crate, location, item, hologram, baseScale, interactionWidth, interactionHeight, 0.8, 0.6f);
+    }
+
+    public CrateDisplay(Crate crate, Location location, ItemStack item,
+                        String hologram, float[] baseScale, float interactionWidth, float interactionHeight,
+                        double hologramOffsetY, float hologramScale) {
         this.crate = crate;
         this.location = location.clone();
         this.baseScale = baseScale;
-        this.itemDisplay = DisplayEntityFactory.createItemDisplay(location, item, baseScale);
-        this.textDisplay = DisplayEntityFactory.createHologram(location.clone().add(0, 0.8, 0), hologram);
+        // item null = modo "so modelo" (ModelEngine/BetterModel/CraftEngine/ItemsAdder ja
+        // trazem o visual proprio deles via setModelEntity - nao faz sentido um item vanilla
+        // generico flutuando junto, ficava duplicado).
+        this.itemDisplay = item != null ? DisplayEntityFactory.createItemDisplay(location, item, baseScale) : null;
+        this.textDisplay = DisplayEntityFactory.createHologram(
+                location.clone().add(0, hologramOffsetY, 0), hologram, hologramScale);
         this.interaction = DisplayEntityFactory.createInteraction(location, interactionWidth, interactionHeight);
     }
 
@@ -112,8 +122,15 @@ public final class CrateDisplay {
         if (interaction != null) interaction.remove();
     }
 
+    /** Valido se tiver QUALQUER parte visual/interativa viva - item, modelo externo ou (no minimo) a hitbox. */
     public boolean isValid() {
-        return itemDisplay != null && itemDisplay.isValid();
+        if (itemDisplay != null) {
+            return itemDisplay.isValid();
+        }
+        if (modelEntity != null) {
+            return modelEntity.isValid();
+        }
+        return interaction != null && interaction.isValid();
     }
 
     public Crate getCrate() { return crate; }

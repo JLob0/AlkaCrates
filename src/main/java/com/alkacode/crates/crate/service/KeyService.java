@@ -1,8 +1,9 @@
 package com.alkacode.crates.crate.service;
 
 import com.alkacode.crates.AlkaCrates;
+import com.alkacode.crates.crate.model.Crate;
 import com.alkacode.crates.crate.model.KeyType;
-import com.alkacode.crates.repository.VirtualKeyRepository;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -11,31 +12,43 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
-import java.sql.SQLException;
-import java.util.logging.Level;
+import java.util.ArrayList;
+import java.util.List;
 
-/** Gerencia keys fisicas (PDC) e virtuais (banco). */
+/** Gerencia keys fisicas (PDC) e virtuais (cache em memoria + banco, ver VirtualKeyManager). */
 public final class KeyService {
 
     private final AlkaCrates plugin;
-    private final VirtualKeyRepository virtualKeyRepository;
+    private final VirtualKeyManager virtualKeyManager;
     private final NamespacedKey keyPdc;
 
-    public KeyService(AlkaCrates plugin, VirtualKeyRepository virtualKeyRepository) {
+    public KeyService(AlkaCrates plugin, VirtualKeyManager virtualKeyManager) {
         this.plugin = plugin;
-        this.virtualKeyRepository = virtualKeyRepository;
+        this.virtualKeyManager = virtualKeyManager;
         this.keyPdc = new NamespacedKey(plugin, "key");
     }
 
-    /** Cria um item de key fisica com PDC alkacrates:key=<crate_id>. */
+    /** Cria um item de key fisica com PDC alkacrates:key=<crate_id> - material/nome/lore configuraveis por crate (key.*). */
     public ItemStack createPhysicalKey(String crateId, int amount) {
-        ItemStack item = new ItemStack(Material.TRIPWIRE_HOOK, amount);
+        Crate crate = plugin.getCratesConfig().getCrate(crateId);
+        Material material = crate != null ? org.bukkit.Material.matchMaterial(crate.getKeyMaterial()) : null;
+        ItemStack item = new ItemStack(material != null ? material : Material.TRIPWIRE_HOOK, amount);
         ItemMeta meta = item.getItemMeta();
-        String crateName = plugin.getCratesConfig().getCrate(crateId) != null
-                ? plugin.getCratesConfig().getCrate(crateId).getDisplayName()
-                : crateId;
-        meta.displayName(MiniMessage.miniMessage().deserialize(
-                "<!i><gradient:#FFD700:#FFA500>Key de " + crateName + "</gradient>"));
+
+        String crateName = crate != null ? crate.getDisplayName() : crateId;
+        String name = crate != null && crate.getKeyName() != null
+                ? crate.getKeyName()
+                : "<gradient:#FFD700:#FFA500>Key de " + crateName + "</gradient>";
+        meta.displayName(MiniMessage.miniMessage().deserialize("<!i>" + name));
+
+        List<Component> lore = new ArrayList<>();
+        if (crate != null) {
+            for (String line : crate.getKeyLore()) {
+                lore.add(MiniMessage.miniMessage().deserialize("<!i>" + line));
+            }
+        }
+        meta.lore(lore);
+
         meta.getPersistentDataContainer().set(keyPdc, PersistentDataType.STRING, crateId);
         item.setItemMeta(meta);
         return item;
@@ -56,16 +69,12 @@ public final class KeyService {
         return item.getItemMeta().getPersistentDataContainer().get(keyPdc, PersistentDataType.STRING);
     }
 
-    /** Entrega key fisica (inventario) ou virtual (banco). */
+    /** Entrega key fisica (inventario) ou virtual (cache + banco). */
     public void giveKey(Player player, String crateId, int amount, KeyType type) {
         if (type == KeyType.PHYSICAL) {
             player.getInventory().addItem(createPhysicalKey(crateId, amount));
         } else {
-            try {
-                virtualKeyRepository.addKeys(player.getUniqueId(), crateId, amount);
-            } catch (SQLException e) {
-                plugin.getLogger().log(Level.WARNING, "Falha ao dar key virtual", e);
-            }
+            virtualKeyManager.addKeys(player.getUniqueId(), crateId, amount);
         }
     }
 
@@ -80,17 +89,37 @@ public final class KeyService {
             }
             return false;
         }
-        int count = getKeyCount(player, crateId, KeyType.VIRTUAL);
-        if (count <= 0) {
-            return false;
+        return virtualKeyManager.consumeKey(player.getUniqueId(), crateId);
+    }
+
+    /** Deposita ate `amount` keys fisicas no saldo virtual (banco de key da mochila). Retorna quantas depositou de fato. */
+    public int depositPhysical(Player player, String crateId, int amount) {
+        int remaining = amount;
+        for (ItemStack item : player.getInventory().getContents()) {
+            if (remaining <= 0) {
+                break;
+            }
+            if (isPhysicalKey(item, crateId)) {
+                int take = Math.min(remaining, item.getAmount());
+                item.setAmount(item.getAmount() - take);
+                remaining -= take;
+            }
         }
-        try {
-            virtualKeyRepository.removeKeys(player.getUniqueId(), crateId, 1);
-            return true;
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Falha ao consumir key virtual", e);
-            return false;
+        int deposited = amount - remaining;
+        if (deposited > 0) {
+            virtualKeyManager.addKeys(player.getUniqueId(), crateId, deposited);
         }
+        return deposited;
+    }
+
+    /** Saca ate `amount` keys virtuais como item fisico (sobra cai no chao se o inventario lotar). Retorna quantas sacou. */
+    public int withdrawVirtual(Player player, String crateId, int amount) {
+        int withdrawn = virtualKeyManager.removeKeys(player.getUniqueId(), crateId, amount);
+        if (withdrawn > 0) {
+            player.getInventory().addItem(createPhysicalKey(crateId, withdrawn)).values()
+                    .forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
+        }
+        return withdrawn;
     }
 
     public int getKeyCount(Player player, String crateId, KeyType type) {
@@ -103,11 +132,6 @@ public final class KeyService {
             }
             return count;
         }
-        try {
-            return virtualKeyRepository.getKeys(player.getUniqueId(), crateId);
-        } catch (SQLException e) {
-            plugin.getLogger().log(Level.WARNING, "Falha ao consultar key virtual", e);
-            return 0;
-        }
+        return virtualKeyManager.getKeys(player.getUniqueId(), crateId);
     }
 }

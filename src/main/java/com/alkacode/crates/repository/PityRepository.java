@@ -6,6 +6,8 @@ import com.alkacode.core.database.AbstractRepository;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /** Contador de aberturas por jogador/crate para guaranteed reward (pity). */
@@ -22,6 +24,21 @@ public final class PityRepository extends AbstractRepository {
                 + "opens INT NOT NULL DEFAULT 0, "
                 + "PRIMARY KEY (player_uuid, crate_id))";
         execute(sql, ps -> {});
+    }
+
+    /** Carrega os contadores de pity de um jogador de uma vez (usado no join, ver PityManager). */
+    public Map<String, Integer> loadAll(UUID player) throws SQLException {
+        Map<String, Integer> result = new HashMap<>();
+        String sql = "SELECT crate_id, opens FROM alkacrates_pity WHERE player_uuid = ?";
+        try (var conn = db.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, player.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    result.put(rs.getString("crate_id"), rs.getInt("opens"));
+                }
+            }
+        }
+        return result;
     }
 
     public int getOpens(UUID player, String crateId) throws SQLException {

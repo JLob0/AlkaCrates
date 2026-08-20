@@ -1,31 +1,54 @@
 id: basica
 display:
   name: "<gradient:#FFD700:#FFA500>Crate Basica"
-  engine: VANILLA
+  engine: PHYSICAL_CHEST
   vanilla:
-    item: DIAMOND_BLOCK
-    scale: [ 0.8, 0.8, 0.8 ]
+    item: CHEST
+    scale: [ 1.0, 1.0, 1.0 ]
 price:
-  currency: coins
+  currency: gold
   amount: 0
 rewards:
   diamante:
     id: diamante
     type: ITEM
     item: DIAMOND
-    amount: 1
-    chance: 50.0
-    display-name: "Diamante"
+    amount: 5
+    chance: 20.0
+    display-name: "5 Diamantes"
+  esmeralda:
+    id: esmeralda
+    type: ITEM
+    item: EMERALD
+    amount: 10
+    chance: 20.0
+    display-name: "10 Esmeraldas"
+  ouro:
+    id: ouro
+    type: ITEM
+    item: GOLD_INGOT
+    amount: 32
+    chance: 25.0
+    display-name: "32 Barras de Ouro"
+    # exemplo: no maximo 3 vitorias por jogador; depois de bater o limite, so pode ganhar
+    # de novo apos 1h (3600s). -1 (padrao) = sem limite.
+    win-limit: 3
+    win-limit-cooldown: 3600
   moedas:
     id: moedas
     type: MONEY
-    currency: coins
-    amount: 100
-    chance: 30.0
-    display-name: "100 Moedas"
-  comando:
-    id: comando
-    type: COMMAND
-    command: "say %player% ganhou na crate"
+    currency: gold
+    amount: 500
     chance: 20.0
-    display-name: "Comando Surpresa"
+    display-name: "500 Moedas"
+  jackpot:
+    id: jackpot
+    type: COMMAND
+    command: "say %player% ganhou o jackpot na Crate Basica!"
+    chance: 15.0
+    display-name: "Jackpot"
+    # exemplo: so pode ser ganho 5 vezes no servidor inteiro (estoque global). -1 = sem limite.
+    global-win-limit: 5
+    broadcast: true
+    # so joga pra quem NAO tem essa permissao (ex: excluir quem ja tem VIP maximo)
+    restricted-permissions: [ "alkacrates.jackpot.blocked" ]

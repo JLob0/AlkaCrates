@@ -2,9 +2,8 @@ package com.alkacode.crates.command;
 
 import com.alkacode.crates.AlkaCrates;
 import com.alkacode.crates.crate.model.Crate;
-import com.alkacode.crates.crate.model.KeyType;
+import com.alkacode.crates.menu.KeyBackpackMenu;
 import com.alkacode.crates.menu.PreviewMenu;
-import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -15,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-/** /crate - comandos para jogadores. */
+/** /crate (alias /crates) - comandos do jogador: preview, mochila. Keys so via evento/admin. */
 public final class CrateCommand implements CommandExecutor, TabCompleter {
 
     private final AlkaCrates plugin;
@@ -31,7 +30,7 @@ public final class CrateCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            player.sendMessage("/crate preview <crate> | /crate givekey <player> <crate> <amount> [--virtual]");
+            player.sendMessage("/crate preview <crate> | /crate mochila");
             return true;
         }
         switch (args[0].toLowerCase()) {
@@ -48,50 +47,11 @@ public final class CrateCommand implements CommandExecutor, TabCompleter {
                 new PreviewMenu(plugin, player, crate).open();
                 return true;
             }
-            case "givekey" -> {
-                if (!player.hasPermission("alkacrates.admin")) {
-                    plugin.getCratesMessages().send(player, "crate-no-permission");
-                    return true;
-                }
-                return handleGiveKey(sender, args);
+            case "mochila" -> {
+                new KeyBackpackMenu(plugin, player).open();
+                return true;
             }
             default -> player.sendMessage("Subcomando invalido.");
-        }
-        return true;
-    }
-
-    private boolean handleGiveKey(CommandSender sender, String[] args) {
-        if (args.length < 4) {
-            sender.sendMessage("Uso: /crate givekey <player> <crate> <amount> [--virtual]");
-            return true;
-        }
-        Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null) {
-            plugin.getCratesMessages().send(sender, "crate-not-found", Map.of("crate", args[1]));
-            return true;
-        }
-        Crate crate = plugin.getCratesConfig().getCrate(args[2]);
-        if (crate == null) {
-            plugin.getCratesMessages().send(sender, "crate-not-found", Map.of("crate", args[2]));
-            return true;
-        }
-        int amount;
-        try {
-            amount = Integer.parseInt(args[3]);
-        } catch (NumberFormatException e) {
-            sender.sendMessage("Quantidade invalida.");
-            return true;
-        }
-        KeyType type = args.length >= 5 && args[4].equalsIgnoreCase("--virtual")
-                ? KeyType.VIRTUAL : KeyType.PHYSICAL;
-        plugin.getKeyService().giveKey(target, crate.getId(), amount, type);
-        plugin.getCratesMessages().send(sender, "crate-givekey-admin", Map.of(
-                "player", target.getName(),
-                "crate", crate.getDisplayName(),
-                "amount", String.valueOf(amount)));
-        if (sender != target) {
-            plugin.getCratesMessages().send(target, type == KeyType.VIRTUAL ? "key-virtual-received" : "crate-givekey",
-                    Map.of("crate", crate.getDisplayName(), "amount", String.valueOf(amount)));
         }
         return true;
     }
@@ -101,19 +61,9 @@ public final class CrateCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
         if (args.length == 1) {
             completions.add("preview");
-            completions.add("givekey");
-        } else if (args.length == 2) {
-            if (args[0].equalsIgnoreCase("givekey")) {
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    completions.add(p.getName());
-                }
-            } else {
-                plugin.getCratesConfig().getCrates().forEach(c -> completions.add(c.getId()));
-            }
-        } else if (args.length == 3) {
+            completions.add("mochila");
+        } else if (args.length == 2 && args[0].equalsIgnoreCase("preview")) {
             plugin.getCratesConfig().getCrates().forEach(c -> completions.add(c.getId()));
-        } else if (args.length == 5) {
-            completions.add("--virtual");
         }
         return completions;
     }

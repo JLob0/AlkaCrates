@@ -1,8 +1,12 @@
 package com.alkacode.crates.reward;
 
 import com.alkacode.crates.crate.model.Reward;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.Plugin;
 
 import java.lang.reflect.Field;
@@ -50,6 +54,18 @@ public final class KitReward implements RewardExecutor {
         } catch (Throwable t) {
             kits.getLogger().log(Level.WARNING, "[AlkaCrates] Falha ao processar reward KIT", t);
         }
+    }
+
+    @Override
+    public ItemStack resolveDisplayItem(Reward reward) {
+        ItemStack item = new ItemStack(Material.ENDER_CHEST);
+        ItemMeta meta = item.getItemMeta();
+        String name = reward.getDisplayName() != null
+                ? reward.getDisplayName()
+                : "<aqua>Kit " + (reward.getKitId() != null ? reward.getKitId() : "");
+        meta.displayName(MiniMessage.miniMessage().deserialize("<!i>" + name));
+        item.setItemMeta(meta);
+        return item;
     }
 
     private Object findManager(Plugin plugin, String simpleName) {

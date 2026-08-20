@@ -1,6 +1,6 @@
 package com.alkacode.crates.display;
 
-import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Location;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Interaction;
@@ -35,11 +35,22 @@ public final class DisplayEntityFactory {
 
     /** Cria um TextDisplay holograma flutuante. */
     public static TextDisplay createHologram(Location location, String text) {
+        return createHologram(location, text, 0.6f);
+    }
+
+    /** Cria um TextDisplay holograma flutuante com escala definida (menor = texto menor). */
+    public static TextDisplay createHologram(Location location, String text, float scale) {
         TextDisplay display = (TextDisplay) location.getWorld().spawnEntity(location, EntityType.TEXT_DISPLAY);
-        display.text(Component.text(text));
+        display.text(MiniMessage.miniMessage().deserialize(text));
         display.setBillboard(TextDisplay.Billboard.CENTER);
         display.setSeeThrough(false);
         display.setShadowed(false);
+        display.setBackgroundColor(org.bukkit.Color.fromARGB(0));
+        display.setTransformation(new Transformation(
+                new Vector3f(0, 0, 0),
+                new AxisAngle4f(0, 0, 0, 1),
+                new Vector3f(scale, scale, scale),
+                new AxisAngle4f(0, 0, 0, 1)));
         return display;
     }
 
@@ -48,7 +59,10 @@ public final class DisplayEntityFactory {
         Interaction interaction = (Interaction) location.getWorld().spawnEntity(location, EntityType.INTERACTION);
         interaction.setInteractionWidth(width);
         interaction.setInteractionHeight(height);
-        interaction.setResponsive(true);
+        // false = a entidade nunca entra no fluxo de combate (sem EntityDamageByEntityEvent,
+        // sem "you ready your fists", sem qualquer efeito de knockback vanilla). So precisamos
+        // de PlayerInteractEntityEvent (clique direito), que dispara independente disso.
+        interaction.setResponsive(false);
         return interaction;
     }
 }

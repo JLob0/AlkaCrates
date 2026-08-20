@@ -3,8 +3,10 @@ package com.alkacode.crates.command;
 import com.alkacode.crates.AlkaCrates;
 import com.alkacode.crates.crate.model.Crate;
 import com.alkacode.crates.crate.model.KeyType;
+import com.alkacode.crates.crate.placement.PlacedCrate;
 import com.alkacode.crates.menu.AdminMenu;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -32,7 +34,8 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage("/alkacrates place <crate> | remove | reload | givekey <player> <crate> <amount> [--virtual]");
+            sender.sendMessage("/alkacrates place <crate> | remove [crate:tag] | list | reload | "
+                    + "givekey <player> <crate> <amount> [--virtual]");
             return true;
         }
         switch (args[0].toLowerCase()) {
@@ -63,17 +66,30 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
                     plugin.getCratesMessages().send(sender, "crate-invalid-location");
                     return true;
                 }
-                boolean ok = plugin.getPlacementService().placeAt(crate, target.getLocation().add(0.5, 0, 0.5), true);
-                if (ok) {
-                    plugin.getCratesMessages().send(sender, "crate-placed", Map.of("crate", crate.getDisplayName()));
+                String tag = plugin.getPlacementService().placeAt(crate, placementLocation(target));
+                if (tag != null) {
+                    plugin.getCratesMessages().send(sender, "crate-placed",
+                            Map.of("crate", crate.getDisplayName(), "tag", tag));
                 } else {
                     plugin.getCratesMessages().send(sender, "crate-invalid-location");
                 }
                 return true;
             }
             case "remove" -> {
+                // /alkacrates remove <crate>:<tag> - remove remotamente, sem precisar estar perto.
+                if (args.length >= 2 && args[1].contains(":")) {
+                    String[] parts = args[1].split(":", 2);
+                    boolean removedByTag = plugin.getPlacementService().removeByTag(parts[0], parts[1]);
+                    if (removedByTag) {
+                        plugin.getCratesMessages().send(sender, "crate-removed", Map.of("crate", parts[0] + ":" + parts[1]));
+                    } else {
+                        plugin.getCratesMessages().send(sender, "crate-tag-not-found", Map.of("tag", args[1]));
+                    }
+                    return true;
+                }
+                // sem argumento: fluxo antigo, mirando o bloco.
                 if (!(sender instanceof Player player)) {
-                    sender.sendMessage("Disponivel apenas in-game.");
+                    sender.sendMessage("Uso: /alkacrates remove <crate>:<tag> (ou mire no bloco, in-game)");
                     return true;
                 }
                 Block target = player.getTargetBlockExact(5);
@@ -89,11 +105,27 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
                 }
                 return true;
             }
+            case "list" -> {
+                List<PlacedCrate> placedCrates = plugin.getPlacedCrateManager().getAll();
+                if (placedCrates.isEmpty()) {
+                    plugin.getCratesMessages().send(sender, "crate-list-empty");
+                    return true;
+                }
+                plugin.getCratesMessages().send(sender, "crate-list-header", Map.of("amount", String.valueOf(placedCrates.size())));
+                for (PlacedCrate placed : placedCrates) {
+                    Location loc = placed.getLocation();
+                    plugin.getCratesMessages().send(sender, "crate-list-entry", Map.of(
+                            "tag", placed.getTag() != null ? placed.getTag() : "?",
+                            "crate", placed.getCrate().getId(),
+                            "world", loc.getWorld() != null ? loc.getWorld().getName() : "?",
+                            "x", String.valueOf(loc.getBlockX()),
+                            "y", String.valueOf(loc.getBlockY()),
+                            "z", String.valueOf(loc.getBlockZ())));
+                }
+                return true;
+            }
             case "reload" -> {
-                plugin.reloadConfig();
-                plugin.getCratesConfig().load();
-                plugin.getCratesMessages().reload();
-                plugin.getPlacementService().loadAll();
+                plugin.reloadEverything();
                 plugin.getCratesMessages().send(sender, "crate-reload");
                 return true;
             }
@@ -103,6 +135,15 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
             default -> sender.sendMessage("Subcomando invalido.");
         }
         return true;
+    }
+
+    /**
+     * Localizacao onde a crate fica: bloco ACIMA do bloco mirado, centralizado.
+     * Assim a crate assenta sobre o topo do bloco (ex.: grama) em vez de entrar nele.
+     */
+    private Location placementLocation(Block target) {
+        return target.getRelative(org.bukkit.block.BlockFace.UP)
+                .getLocation().add(0.5, 0, 0.5);
     }
 
     private boolean handleGiveKey(CommandSender sender, String[] args) {
@@ -148,15 +189,22 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
             completions.add("menu");
             completions.add("place");
             completions.add("remove");
+            completions.add("list");
             completions.add("reload");
             completions.add("givekey");
         } else if (args.length == 2) {
-            if (args[0].equalsIgnoreCase("givekey")) {
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    completions.add(p.getName());
+            if (args[0].equalsIgnoreCase("givekey") || args[0].equalsIgnoreCase("place")) {
+                if (args[0].equalsIgnoreCase("givekey")) {
+                    for (Player p : Bukkit.getOnlinePlayers()) {
+                        completions.add(p.getName());
+                    }
+                } else {
+                    plugin.getCratesConfig().getCrates().forEach(c -> completions.add(c.getId()));
                 }
-            } else {
-                plugin.getCratesConfig().getCrates().forEach(c -> completions.add(c.getId()));
+            } else if (args[0].equalsIgnoreCase("remove")) {
+                // sugere "crate:AC-###" pra cada crate ja colocada
+                plugin.getPlacedCrateManager().getAll().forEach(placed ->
+                        completions.add(placed.getCrate().getId() + ":" + placed.getTag()));
             }
         } else if (args.length == 3) {
             plugin.getCratesConfig().getCrates().forEach(c -> completions.add(c.getId()));

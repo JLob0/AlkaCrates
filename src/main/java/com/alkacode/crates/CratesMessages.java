@@ -38,13 +38,17 @@ public final class CratesMessages {
         return config.getString("prefix", "<gradient:#FFD700:#FFA500>[AlkaCrates]</gradient> ");
     }
 
-    /** Pega a mensagem crua, aplica {prefix} e os placeholders dados, e renderiza em Component. */
+    /** Pega a mensagem crua, aplica <prefix> e os placeholders dados, e renderiza em Component. */
     public Component parse(String key, Map<String, String> placeholders) {
         String raw = config.getString("messages." + key, key);
         if (raw == null) {
             return messageProvider.parse(key);
         }
-        raw = raw.replace("{prefix}", prefix());
+        // BUG historico: toda mensagem do messages.yml usa "<prefix>" (estilo tag), mas
+        // essa substituicao procurava "{prefix}" (chaves) - nunca batia com nada, e o
+        // MessageProvider do Core (so MiniMessage puro, sem tag <prefix> registrada)
+        // deixava "<prefix>" aparecer literal no chat de TODA mensagem do plugin.
+        raw = raw.replace("<prefix>", prefix());
         if (placeholders != null) {
             for (Map.Entry<String, String> entry : placeholders.entrySet()) {
                 raw = raw.replace("{" + entry.getKey() + "}", entry.getValue());
