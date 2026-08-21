@@ -3,6 +3,8 @@ package com.alkacode.crates;
 import com.alkacode.core.api.AlkaAPI;
 import com.alkacode.core.plugin.AlkaPlugin;
 import com.alkacode.crates.config.CratesConfig;
+import com.alkacode.crates.config.MenuConfig;
+import com.alkacode.crates.gui.layout.GuiLayoutLoader;
 import com.alkacode.crates.animation.AnimationEngine;
 import com.alkacode.crates.command.AlkaCratesCommand;
 import com.alkacode.crates.command.CrateCommand;
@@ -51,6 +53,8 @@ public final class AlkaCrates extends AlkaPlugin {
 
     private CratesConfig cratesConfig;
     private CratesMessages cratesMessages;
+    private MenuConfig menuConfig;
+    private GuiLayoutLoader guiLayoutLoader;
     private AnimationEngine animationEngine;
     private PlacedCrateManager placedCrateManager;
     private CratePlacementService placementService;
@@ -80,6 +84,8 @@ public final class AlkaCrates extends AlkaPlugin {
         this.cratesMessages = new CratesMessages(this);
         this.cratesConfig = new CratesConfig(this);
         cratesConfig.load();
+        this.menuConfig = new MenuConfig(this);
+        this.guiLayoutLoader = new GuiLayoutLoader(this);
 
         this.virtualKeyRepository = new VirtualKeyRepository(api.getDatabase());
         this.crateLocationRepository = new CrateLocationRepository(api.getDatabase());
@@ -219,12 +225,15 @@ public final class AlkaCrates extends AlkaPlugin {
         reloadConfig();
         cratesConfig.load();
         cratesMessages.reload();
+        menuConfig.reload();
         placedCrateManager.removeAll();
         placementService.loadAll();
     }
 
     public CratesConfig getCratesConfig() { return cratesConfig; }
     public CratesMessages getCratesMessages() { return cratesMessages; }
+    public MenuConfig getMenuConfig() { return menuConfig; }
+    public GuiLayoutLoader getGuiLayoutLoader() { return guiLayoutLoader; }
     public AnimationEngine getAnimationEngine() { return animationEngine; }
     public PlacedCrateManager getPlacedCrateManager() { return placedCrateManager; }
     public CratePlacementService getPlacementService() { return placementService; }

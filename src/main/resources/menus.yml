@@ -1,0 +1,324 @@
+# AlkaCrates - menus.yml
+# Titulos, nomes e lores das GUIs, editaveis sem recompilar. Placeholders entre {}
+# sao trocados na hora. MiniMessage. Layout/posicao dos slots fica em gui-layouts.yml.
+# Icones de crates/recompensas reais (o que o jogador realmente ve na lista) continuam
+# vindo dos proprios arquivos crates/*.yml - aqui so fica o "molde" (chrome) do menu.
+
+common:
+  border:
+    material: BLACK_STAINED_GLASS_PANE
+    name: " "
+
+# ------------------------- Admin (lista de crates) -------------------------
+alkacrates-admin:
+  title: "<gradient:#FFD700:#FFA500>AlkaCrates - Admin"
+  criar:
+    material: LIME_DYE
+    name: "<green><bold>+ Criar Nova Crate"
+    lore:
+      - "<gray>Clique e digite o ID no chat"
+      - "<gray>(so letras minusculas, numeros e _)"
+  crate-item:
+    lore:
+      - "<gray>ID: <white>{id}"
+      - "<gray>Engine: <white>{engine}"
+      - "<gray>Recompensas: <white>{recompensas}"
+      - "<gray>Preco: <white>{preco} {moeda}"
+      - ""
+      - "<yellow>Clique para editar"
+
+# ------------------------- Preview de loot -------------------------
+alkacrates-preview:
+  title: "<gradient:#FFD700:#FFA500>Loot de {crate}"
+
+# ------------------------- Mochila de keys -------------------------
+alkacrates-backpack:
+  title: "<gradient:#FFD700:#FFA500>Mochila de Keys"
+  vazio:
+    material: BARRIER
+    name: "<red>Voce nao tem nenhuma key"
+    lore:
+      - "<gray>Compre com <white>/crate buy <crate>"
+      - "<gray>ou receba de um evento/admin."
+  key-item:
+    lore:
+      - "<gray>Fisicas: <white>{fisicas}"
+      - "<gray>Virtuais: <white>{virtuais}"
+      - "<gray>Total: <yellow>{total}"
+      - ""
+      - "<green>Esquerdo: <white>deposita 1  <green>Shift+Esquerdo: <white>deposita tudo"
+      - "<aqua>Direito: <white>saca 1  <aqua>Shift+Direito: <white>saca tudo"
+
+# ------------------------- Editor de crate -------------------------
+alkacrates-crate-edit:
+  title: "<gradient:#FFD700:#FFA500>Editar: {crate}"
+  nome:
+    material: NAME_TAG
+    name: "<yellow><bold>Nome de exibicao"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra digitar o novo nome no chat"
+  engine:
+    material: BEACON
+    name: "<aqua><bold>Engine"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra alternar"
+  item:
+    material: ITEM_FRAME
+    name: "<light_purple><bold>Item de exibicao"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Arraste um item do seu inventario aqui"
+      - "<gray>(funciona com item custom - ItemsAdder,"
+      - "<gray>NBT, etc) ou clique vazio pra digitar"
+      - "<gray>um Material vanilla no chat"
+  escala:
+    material: ARMOR_STAND
+    name: "<gold><bold>Escala"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<green>Esquerdo: <white>maior  <red>Direito: <white>menor"
+  preco:
+    material: EMERALD
+    name: "<green><bold>Preco"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<green>Esquerdo: <white>+10 (shift +100)"
+      - "<red>Direito: <white>-10 (shift -100)"
+      - "<gray>0 = nao compravel via /crate buy"
+  moeda:
+    material: SUNFLOWER
+    name: "<yellow><bold>Moeda"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra digitar a moeda no chat"
+  recompensas:
+    material: CHEST
+    name: "<gold><bold>Recompensas"
+    lore:
+      - "<gray>Total: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra gerenciar"
+  lore-caixa:
+    material: WRITABLE_BOOK
+    name: "<yellow><bold>Lore da caixa"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<gray>Aparece embaixo do nome no holograma"
+      - "<yellow>Clique pra digitar no chat (linhas separadas por |)"
+  key-material:
+    material: TRIPWIRE_HOOK
+    name: "<light_purple><bold>Material da key"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra digitar o Material no chat"
+  key-nome:
+    material: NAME_TAG
+    name: "<light_purple><bold>Nome da key"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra digitar no chat"
+  key-lore:
+    material: WRITTEN_BOOK
+    name: "<light_purple><bold>Lore da key"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra digitar no chat (linhas separadas por |)"
+  bloco-fisico:
+    material: CHEST
+    name: "<gold><bold>Bloco fisico"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<gray>So vale pro engine PHYSICAL_CHEST"
+      - "<yellow>Clique pra digitar o Material no chat"
+  deletar:
+    material: BARRIER
+    name: "<red><bold>Deletar Crate"
+    lore:
+      - "<gray>Remove o arquivo YAML e as"
+      - "<gray>localizacoes fisicas ja colocadas."
+      - ""
+      - "<red>Shift + botao direito pra confirmar"
+  voltar:
+    material: ARROW
+    name: "<red><bold>Voltar"
+    lore:
+      - "<gray>Volta pra lista de crates"
+
+# ------------------------- Lista de recompensas -------------------------
+alkacrates-reward-list:
+  title: "<gradient:#FFD700:#FFA500>Recompensas: {crate}"
+  adicionar:
+    material: LIME_DYE
+    name: "<green><bold>+ Adicionar Recompensa"
+    lore:
+      - "<gray>Cria uma recompensa ITEM padrao"
+      - "<gray>(voce edita os campos em seguida)"
+  voltar:
+    material: ARROW
+    name: "<red><bold>Voltar"
+    lore:
+      - "<gray>Volta pro editor da crate"
+  pagina-anterior:
+    material: ARROW
+    name: "<yellow><bold>Pagina anterior"
+  proxima-pagina:
+    material: ARROW
+    name: "<yellow><bold>Proxima pagina"
+  reward-item:
+    lore:
+      - "<gray>Tipo: <white>{tipo}"
+      - "<gray>Chance: <yellow>{chance}%"
+      - "<gray>ID: <white>{id}"
+      - ""
+      - "<yellow>Clique pra editar"
+      - "<dark_red>Solte (Q) pra remover"
+
+# ------------------------- Editor de recompensa -------------------------
+alkacrates-reward-edit:
+  title: "<gradient:#FFD700:#FFA500>Recompensa: {reward}"
+  tipo:
+    material: COMPASS
+    name: "<aqua><bold>Tipo"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra alternar"
+  nome:
+    material: NAME_TAG
+    name: "<yellow><bold>Nome de exibicao"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<yellow>Clique pra digitar no chat"
+  chance:
+    material: GOLD_NUGGET
+    name: "<gold><bold>Chance"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<green>Esquerdo: <white>+1 (shift +10)"
+      - "<red>Direito: <white>-1 (shift -10)"
+      - "<yellow>Solte (Q): <white>digitar valor exato no chat"
+      - "<gray>(pra valores tipo 0.001, os cliques nao chegam la)"
+  garantida-sim:
+    material: LIME_DYE
+    name: "<light_purple><bold>Garantida (pity): SIM"
+    lore:
+      - "<gray>Entra no pool sorteado quando o"
+      - "<gray>pity da crate (pity-opens no config.yml) bate."
+      - ""
+      - "<yellow>Clique pra alternar"
+  garantida-nao:
+    material: GRAY_DYE
+    name: "<light_purple><bold>Garantida (pity): nao"
+    lore:
+      - "<gray>Entra no pool sorteado quando o"
+      - "<gray>pity da crate (pity-opens no config.yml) bate."
+      - ""
+      - "<yellow>Clique pra alternar"
+  broadcast-sim:
+    material: LIME_DYE
+    name: "<light_purple><bold>Broadcast: SIM"
+    lore:
+      - "<gray>Anuncia pra todo mundo quando"
+      - "<gray>alguem ganha essa recompensa."
+      - ""
+      - "<yellow>Clique pra alternar"
+  broadcast-nao:
+    material: GRAY_DYE
+    name: "<light_purple><bold>Broadcast: nao"
+    lore:
+      - "<gray>Anuncia pra todo mundo quando"
+      - "<gray>alguem ganha essa recompensa."
+      - ""
+      - "<yellow>Clique pra alternar"
+  limite-jogador:
+    material: IRON_BARS
+    name: "<red><bold>Limite por jogador"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<green>Esquerdo: <white>+1  <red>Direito: <white>-1"
+      - "<gray>-1 = ilimitado"
+  cooldown-limite:
+    material: CLOCK
+    name: "<red><bold>Cooldown do limite"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<green>Esquerdo: <white>+60s (shift +3600s)"
+      - "<red>Direito: <white>-60s (shift -3600s)"
+  limite-global:
+    material: BEDROCK
+    name: "<red><bold>Limite global"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<green>Esquerdo: <white>+1  <red>Direito: <white>-1"
+      - "<gray>-1 = ilimitado (estoque do servidor todo)"
+  permissoes-obrigatorias:
+    material: WRITABLE_BOOK
+    name: "<aqua><bold>Permissoes obrigatorias"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<gray>So ganha quem tiver UMA dessas."
+      - "<yellow>Clique pra digitar (separado por virgula, vazio = nenhuma)"
+  permissoes-restritas:
+    material: WRITTEN_BOOK
+    name: "<aqua><bold>Permissoes restritas"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<gray>Quem tiver QUALQUER uma NAO ganha."
+      - "<yellow>Clique pra digitar (separado por virgula, vazio = nenhuma)"
+  pity-incremento:
+    material: EXPERIENCE_BOTTLE
+    name: "<light_purple><bold>Soft pity - incremento"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - ""
+      - "<gray>A cada abertura que VOCE (o admin, pra teste)"
+      - "<gray>nao ganhar essa reward, a chance sobe isso."
+      - "<gray>0 = desligado (fica sempre em 'Chance')."
+      - ""
+      - "<green>Esquerdo: <white>+0.01 (shift +1)"
+      - "<red>Direito: <white>-0.01 (shift -1)"
+      - "<yellow>Solte (Q): <white>digitar valor exato no chat"
+  pity-teto:
+    material: BEACON
+    name: "<light_purple><bold>Soft pity - teto"
+    lore:
+      - "<gray>Atual: <white>{atual}"
+      - "<gray>Chance efetiva agora (voce): <yellow>{efetiva} <gray>({tentativas} tentativa(s))"
+      - ""
+      - "<gray>A chance nunca passa desse valor,"
+      - "<gray>mesmo com muitas tentativas acumuladas."
+      - ""
+      - "<green>Esquerdo: <white>+1 (shift +10)"
+      - "<red>Direito: <white>-1 (shift -10)"
+      - "<yellow>Solte (Q): <white>digitar valor exato no chat"
+  deletar:
+    material: BARRIER
+    name: "<red><bold>Deletar Recompensa"
+    lore:
+      - ""
+      - "<red>Shift + botao direito pra confirmar"
+  voltar:
+    material: ARROW
+    name: "<red><bold>Voltar"
+    lore:
+      - "<gray>Volta pra lista de recompensas"

@@ -4,9 +4,13 @@ import com.alkacode.core.gui.BaseGui;
 import com.alkacode.crates.AlkaCrates;
 import com.alkacode.crates.crate.model.Crate;
 import com.alkacode.crates.crate.model.KeyType;
+import com.alkacode.crates.gui.layout.GuiLayoutLoader;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -26,27 +30,30 @@ public final class KeyBackpackMenu extends BaseGui {
 
     @Override
     public void render() {
-        fillBorder(createItem(Material.BLACK_STAINED_GLASS_PANE, " "));
+        GuiLayoutLoader.GuiLayout layout = plugin.getGuiLayoutLoader().getLayout("alkacrates-backpack");
+        fillBorder(plugin.getMenuConfig().item("common.border", null));
 
-        int slot = 10;
+        List<Integer> slots = layout.findSlots('0');
+        List<ItemStack> icons = new ArrayList<>();
+
         for (Crate crate : plugin.getCratesConfig().getCrates()) {
             int physical = plugin.getKeyService().getKeyCount(player, crate.getId(), KeyType.PHYSICAL);
             int virtual = plugin.getKeyService().getKeyCount(player, crate.getId(), KeyType.VIRTUAL);
             if (physical <= 0 && virtual <= 0) {
                 continue;
             }
-            if (slot >= 26) {
+            if (icons.size() >= slots.size()) {
                 break;
             }
             Material icon = Material.matchMaterial(crate.getVanillaItem());
-            setItem(slot, createItem(icon != null ? icon : Material.TRIPWIRE_HOOK,
-                    "<gold><bold>" + crate.getDisplayName(),
-                    "<gray>Fisicas: <white>" + physical,
-                    "<gray>Virtuais: <white>" + virtual,
-                    "<gray>Total: <yellow>" + (physical + virtual),
-                    "",
-                    "<green>Esquerdo: <white>deposita 1  <green>Shift+Esquerdo: <white>deposita tudo",
-                    "<aqua>Direito: <white>saca 1  <aqua>Shift+Direito: <white>saca tudo"), event -> {
+            List<String> lore = plugin.getMenuConfig().rawLore("alkacrates-backpack.key-item", Map.of(
+                    "fisicas", String.valueOf(physical),
+                    "virtuais", String.valueOf(virtual),
+                    "total", String.valueOf(physical + virtual)));
+            ItemStack item = createItem(icon != null ? icon : Material.TRIPWIRE_HOOK,
+                    "<gold><bold>" + crate.getDisplayName(), lore.toArray(new String[0]));
+            int index = icons.size();
+            setItem(slots.get(index), item, event -> {
                 String crateId = crate.getId();
                 if (event.isLeftClick()) {
                     int amount = event.isShiftClick() ? physical : 1;
@@ -71,13 +78,13 @@ public final class KeyBackpackMenu extends BaseGui {
                 }
                 refresh();
             });
-            slot++;
+            icons.add(item);
         }
 
-        if (slot == 10) {
-            setItem(13, createItem(Material.BARRIER, "<red>Voce nao tem nenhuma key",
-                    "<gray>Compre com <white>/crate buy <crate>",
-                    "<gray>ou receba de um evento/admin."));
+        if (icons.isEmpty()) {
+            // Mesma posicao visual do placeholder antigo (slot 13, centro da 1a linha de conteudo).
+            int emptySlot = slots.get(3);
+            setItem(emptySlot, plugin.getMenuConfig().item("alkacrates-backpack.vazio", null));
         }
     }
 }

@@ -3,6 +3,7 @@ package com.alkacode.crates.menu;
 import com.alkacode.core.gui.BaseGui;
 import com.alkacode.crates.AlkaCrates;
 import com.alkacode.crates.crate.model.Crate;
+import com.alkacode.crates.gui.layout.GuiLayoutLoader;
 import com.alkacode.crates.menu.editor.CrateEditMenu;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
@@ -13,6 +14,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /** Menu administrativo: lista as crates cadastradas, cria novas e abre o editor de cada uma. */
 public final class AdminMenu extends BaseGui {
@@ -26,10 +28,10 @@ public final class AdminMenu extends BaseGui {
 
     @Override
     public void render() {
-        fillBorder(createItem(Material.BLACK_STAINED_GLASS_PANE, " "));
+        GuiLayoutLoader.GuiLayout layout = plugin.getGuiLayoutLoader().getLayout("alkacrates-admin");
+        fillBorder(plugin.getMenuConfig().item("common.border", null));
 
-        setItem(4, createItem(Material.LIME_DYE, "<green><bold>+ Criar Nova Crate",
-                "<gray>Clique e digite o ID no chat", "<gray>(so letras minusculas, numeros e _)"), event -> {
+        setItem(layout.firstSlot('B'), plugin.getMenuConfig().item("alkacrates-admin.criar", null), event -> {
             player.closeInventory();
             player.sendMessage(plugin.getCratesMessages().parse("crate-prompt-new-id"));
             plugin.getChatInputManager().await(player.getUniqueId(), input -> {
@@ -51,20 +53,19 @@ public final class AdminMenu extends BaseGui {
             });
         });
 
-        int slot = 10;
-        for (Crate crate : plugin.getCratesConfig().getCrates()) {
-            if (slot >= 44) {
-                break;
-            }
+        List<Integer> slots = layout.findSlots('0');
+        List<Crate> crates = plugin.getCratesConfig().getCrates();
+        for (int i = 0; i < slots.size() && i < crates.size(); i++) {
+            Crate crate = crates.get(i);
             ItemStack icon = crateIcon(crate);
-            setItem(slot, withLore(icon, "<gold><bold>" + crate.getDisplayName(),
-                    "<gray>ID: <white>" + crate.getId(),
-                    "<gray>Engine: <white>" + crate.getEngineType(),
-                    "<gray>Recompensas: <white>" + crate.getRewards().size(),
-                    "<gray>Preco: <white>" + crate.getPrice() + " " + crate.getPriceCurrency(),
-                    "",
-                    "<yellow>Clique para editar"), event -> new CrateEditMenu(plugin, player, crate.getId()).open());
-            slot++;
+            List<String> lore = plugin.getMenuConfig().rawLore("alkacrates-admin.crate-item", Map.of(
+                    "id", crate.getId(),
+                    "engine", crate.getEngineType().toString(),
+                    "recompensas", String.valueOf(crate.getRewards().size()),
+                    "preco", String.valueOf(crate.getPrice()),
+                    "moeda", crate.getPriceCurrency()));
+            setItem(slots.get(i), withLore(icon, "<gold><bold>" + crate.getDisplayName(), lore.toArray(new String[0])),
+                    event -> new CrateEditMenu(plugin, player, crate.getId()).open());
         }
     }
 

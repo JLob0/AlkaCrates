@@ -2,9 +2,11 @@ package com.alkacode.crates.menu.editor;
 
 import com.alkacode.core.gui.BaseGui;
 import com.alkacode.crates.AlkaCrates;
+import com.alkacode.crates.config.MenuConfig;
 import com.alkacode.crates.crate.model.Crate;
 import com.alkacode.crates.crate.model.Reward;
 import com.alkacode.crates.crate.model.RewardType;
+import com.alkacode.crates.gui.layout.GuiLayoutLoader;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -13,10 +15,17 @@ import org.bukkit.event.inventory.ClickType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-/** Editor de uma recompensa - campos comuns + campos especificos por RewardType. */
+/**
+ * Editor de uma recompensa - campos comuns (posicao/icone/texto em gui-layouts.yml/
+ * menus.yml) + campos especificos por RewardType (slots Y/Z do layout, mas o
+ * icone/label continua em Java porque depende do enum ativo - nao da pra
+ * generalizar em menus.yml sem uma secao por tipo, e o RewardType ja e o dono
+ * dessa variacao).
+ */
 public final class RewardEditMenu extends BaseGui {
 
     private final AlkaCrates plugin;
@@ -24,7 +33,8 @@ public final class RewardEditMenu extends BaseGui {
     private final String rewardId;
 
     public RewardEditMenu(AlkaCrates plugin, Player player, String crateId, String rewardId) {
-        super(plugin, player, "<gradient:#FFD700:#FFA500>Recompensa: " + rewardId, 6, "alkacrates-reward-edit");
+        super(plugin, player, plugin.getMenuConfig().title("alkacrates-reward-edit.title", Map.of("reward", rewardId)),
+                6, "alkacrates-reward-edit");
         this.plugin = plugin;
         this.crateId = crateId;
         this.rewardId = rewardId;
@@ -38,26 +48,21 @@ public final class RewardEditMenu extends BaseGui {
             new RewardListMenu(plugin, player, crateId).open();
             return;
         }
-        fillBorder(createItem(Material.BLACK_STAINED_GLASS_PANE, " "));
+        GuiLayoutLoader.GuiLayout layout = plugin.getGuiLayoutLoader().getLayout("alkacrates-reward-edit");
+        MenuConfig menu = plugin.getMenuConfig();
+        fillBorder(menu.item("common.border", null));
 
-        setItem(10, createItem(Material.COMPASS, "<aqua><bold>Tipo",
-                "<gray>Atual: <white>" + reward.getType(),
-                "", "<yellow>Clique pra alternar"), event -> {
+        setItem(layout.firstSlot('T'), menu.item("alkacrates-reward-edit.tipo", Map.of("atual", reward.getType().toString())), event -> {
             RewardType[] values = RewardType.values();
             int next = (reward.getType().ordinal() + 1) % values.length;
             mutate(config -> config.set(path("type"), values[next].name()));
         });
 
-        setItem(11, createItem(Material.NAME_TAG, "<yellow><bold>Nome de exibicao",
-                "<gray>Atual: <white>" + (reward.getDisplayName() != null ? reward.getDisplayName() : "(nenhum)"),
-                "", "<yellow>Clique pra digitar no chat"),
+        setItem(layout.firstSlot('N'), menu.item("alkacrates-reward-edit.nome",
+                Map.of("atual", reward.getDisplayName() != null ? reward.getDisplayName() : "(nenhum)")),
                 event -> promptText("crate-prompt-name", input -> mutate(config -> config.set(path("display-name"), input))));
 
-        setItem(12, createItem(Material.GOLD_NUGGET, "<gold><bold>Chance",
-                "<gray>Atual: <white>" + trim(reward.getChance()),
-                "", "<green>Esquerdo: <white>+1 (shift +10)", "<red>Direito: <white>-1 (shift -10)",
-                "<yellow>Solte (Q): <white>digitar valor exato no chat",
-                "<gray>(pra valores tipo 0.001, os cliques nao chegam la)"), event -> {
+        setItem(layout.firstSlot('C'), menu.item("alkacrates-reward-edit.chance", Map.of("atual", trim(reward.getChance()))), event -> {
             if (event.getClick() == ClickType.DROP) {
                 promptNumber("crate-prompt-chance", value -> mutate(config -> config.set(path("chance"), Math.max(0, value))));
                 return;
@@ -67,53 +72,41 @@ public final class RewardEditMenu extends BaseGui {
             mutate(config -> config.set(path("chance"), value));
         });
 
-        setItem(13, createItem(reward.isGuaranteed() ? Material.LIME_DYE : Material.GRAY_DYE,
-                "<light_purple><bold>Garantida (pity): " + (reward.isGuaranteed() ? "SIM" : "nao"),
-                "<gray>Entra no pool sorteado quando o", "<gray>pity da crate (pity-opens no config.yml) bate.",
-                "", "<yellow>Clique pra alternar"),
+        setItem(layout.firstSlot('G'), menu.item(reward.isGuaranteed()
+                ? "alkacrates-reward-edit.garantida-sim" : "alkacrates-reward-edit.garantida-nao", null),
                 event -> mutate(config -> config.set(path("guaranteed"), !reward.isGuaranteed())));
 
-        setItem(14, createItem(reward.isBroadcast() ? Material.LIME_DYE : Material.GRAY_DYE,
-                "<light_purple><bold>Broadcast: " + (reward.isBroadcast() ? "SIM" : "nao"),
-                "<gray>Anuncia pra todo mundo quando", "<gray>alguem ganha essa recompensa.",
-                "", "<yellow>Clique pra alternar"),
+        setItem(layout.firstSlot('B'), menu.item(reward.isBroadcast()
+                ? "alkacrates-reward-edit.broadcast-sim" : "alkacrates-reward-edit.broadcast-nao", null),
                 event -> mutate(config -> config.set(path("broadcast"), !reward.isBroadcast())));
 
-        setItem(15, createItem(Material.IRON_BARS, "<red><bold>Limite por jogador",
-                "<gray>Atual: <white>" + (reward.getWinLimit() < 0 ? "ilimitado" : reward.getWinLimit()),
-                "", "<green>Esquerdo: <white>+1  <red>Direito: <white>-1", "<gray>-1 = ilimitado"), event -> {
+        setItem(layout.firstSlot('W'), menu.item("alkacrates-reward-edit.limite-jogador",
+                Map.of("atual", reward.getWinLimit() < 0 ? "ilimitado" : String.valueOf(reward.getWinLimit()))), event -> {
             int value = reward.getWinLimit() + (event.isLeftClick() ? 1 : -1);
             mutate(config -> config.set(path("win-limit"), Math.max(-1, value)));
         });
 
-        setItem(16, createItem(Material.CLOCK, "<red><bold>Cooldown do limite",
-                "<gray>Atual: <white>" + reward.getWinLimitCooldownSeconds() + "s",
-                "", "<green>Esquerdo: <white>+60s (shift +3600s)",
-                "<red>Direito: <white>-60s (shift -3600s)"), event -> {
+        setItem(layout.firstSlot('D'), menu.item("alkacrates-reward-edit.cooldown-limite",
+                Map.of("atual", reward.getWinLimitCooldownSeconds() + "s")), event -> {
             long delta = event.isLeftClick() ? (event.isShiftClick() ? 3600 : 60) : (event.isShiftClick() ? -3600 : -60);
             long value = Math.max(0, reward.getWinLimitCooldownSeconds() + delta);
             mutate(config -> config.set(path("win-limit-cooldown"), value));
         });
 
-        setItem(19, createItem(Material.BEDROCK, "<red><bold>Limite global",
-                "<gray>Atual: <white>" + (reward.getGlobalWinLimit() < 0 ? "ilimitado" : reward.getGlobalWinLimit()),
-                "", "<green>Esquerdo: <white>+1  <red>Direito: <white>-1", "<gray>-1 = ilimitado (estoque do servidor todo)"),
+        setItem(layout.firstSlot('X'), menu.item("alkacrates-reward-edit.limite-global",
+                Map.of("atual", reward.getGlobalWinLimit() < 0 ? "ilimitado" : String.valueOf(reward.getGlobalWinLimit()))),
                 event -> {
             int value = reward.getGlobalWinLimit() + (event.isLeftClick() ? 1 : -1);
             mutate(config -> config.set(path("global-win-limit"), Math.max(-1, value)));
         });
 
-        setItem(20, createItem(Material.WRITABLE_BOOK, "<aqua><bold>Permissoes obrigatorias",
-                "<gray>Atual: <white>" + joinOrNone(reward.getRequiredPermissions()),
-                "", "<gray>So ganha quem tiver UMA dessas.",
-                "<yellow>Clique pra digitar (separado por virgula, vazio = nenhuma)"),
+        setItem(layout.firstSlot('P'), menu.item("alkacrates-reward-edit.permissoes-obrigatorias",
+                Map.of("atual", joinOrNone(reward.getRequiredPermissions()))),
                 event -> promptText("crate-prompt-permissions", input -> mutate(config ->
                         config.set(path("required-permissions"), splitPermissions(input)))));
 
-        setItem(21, createItem(Material.WRITTEN_BOOK, "<aqua><bold>Permissoes restritas",
-                "<gray>Atual: <white>" + joinOrNone(reward.getRestrictedPermissions()),
-                "", "<gray>Quem tiver QUALQUER uma NAO ganha.",
-                "<yellow>Clique pra digitar (separado por virgula, vazio = nenhuma)"),
+        setItem(layout.firstSlot('R'), menu.item("alkacrates-reward-edit.permissoes-restritas",
+                Map.of("atual", joinOrNone(reward.getRestrictedPermissions()))),
                 event -> promptText("crate-prompt-permissions", input -> mutate(config ->
                         config.set(path("restricted-permissions"), splitPermissions(input)))));
 
@@ -121,13 +114,8 @@ public final class RewardEditMenu extends BaseGui {
         double effective = reward.hasSoftPity()
                 ? Math.min(reward.getPityMaxChance(), reward.getChance() + reward.getPityIncrement() * attempts)
                 : reward.getChance();
-        setItem(25, createItem(Material.EXPERIENCE_BOTTLE, "<light_purple><bold>Soft pity - incremento",
-                "<gray>Atual: <white>" + (reward.hasSoftPity() ? "+" + trim(reward.getPityIncrement()) + " por tentativa" : "desligado"),
-                "", "<gray>A cada abertura que VOCE (o admin, pra teste)",
-                "<gray>nao ganhar essa reward, a chance sobe isso.",
-                "<gray>0 = desligado (fica sempre em 'Chance').",
-                "", "<green>Esquerdo: <white>+0.01 (shift +1)", "<red>Direito: <white>-0.01 (shift -1)",
-                "<yellow>Solte (Q): <white>digitar valor exato no chat"), event -> {
+        setItem(layout.firstSlot('S'), menu.item("alkacrates-reward-edit.pity-incremento", Map.of("atual",
+                reward.hasSoftPity() ? "+" + trim(reward.getPityIncrement()) + " por tentativa" : "desligado")), event -> {
             if (event.getClick() == ClickType.DROP) {
                 promptNumber("crate-prompt-pity-increment", value -> mutate(config -> config.set(path("pity-increment"), Math.max(0, value))));
                 return;
@@ -137,12 +125,10 @@ public final class RewardEditMenu extends BaseGui {
             mutate(config -> config.set(path("pity-increment"), value));
         });
 
-        setItem(26, createItem(Material.BEACON, "<light_purple><bold>Soft pity - teto",
-                "<gray>Atual: <white>" + trim(reward.getPityMaxChance()),
-                "<gray>Chance efetiva agora (voce): <yellow>" + trim(effective) + " <gray>(" + attempts + " tentativa(s))",
-                "", "<gray>A chance nunca passa desse valor,", "<gray>mesmo com muitas tentativas acumuladas.",
-                "", "<green>Esquerdo: <white>+1 (shift +10)", "<red>Direito: <white>-1 (shift -10)",
-                "<yellow>Solte (Q): <white>digitar valor exato no chat"), event -> {
+        setItem(layout.firstSlot('M'), menu.item("alkacrates-reward-edit.pity-teto", Map.of(
+                "atual", trim(reward.getPityMaxChance()),
+                "efetiva", trim(effective),
+                "tentativas", String.valueOf(attempts))), event -> {
             if (event.getClick() == ClickType.DROP) {
                 promptNumber("crate-prompt-pity-cap", value -> mutate(config -> config.set(path("pity-max-chance"), Math.max(0, value))));
                 return;
@@ -152,10 +138,9 @@ public final class RewardEditMenu extends BaseGui {
             mutate(config -> config.set(path("pity-max-chance"), value));
         });
 
-        renderTypeSpecific(reward);
+        renderTypeSpecific(reward, layout);
 
-        setItem(31, createItem(Material.BARRIER, "<red><bold>Deletar Recompensa",
-                "", "<red>Shift + botao direito pra confirmar"), event -> {
+        setItem(layout.firstSlot('E'), menu.item("alkacrates-reward-edit.deletar", null), event -> {
             if (event.isShiftClick() && event.isRightClick()) {
                 YamlConfiguration config = plugin.getCrateFileService().load(crateId);
                 plugin.getCrateFileService().removeReward(config, rewardId);
@@ -164,20 +149,24 @@ public final class RewardEditMenu extends BaseGui {
             }
         });
 
-        setItem(40, createItem(Material.ARROW, "<red><bold>Voltar", "<gray>Volta pra lista de recompensas"),
+        setItem(layout.firstSlot('V'), menu.item("alkacrates-reward-edit.voltar", null),
                 event -> new RewardListMenu(plugin, player, crateId).open());
     }
 
-    private void renderTypeSpecific(Reward reward) {
+    /** Campos especificos do RewardType (slots Y/Z) - icone/label ficam em Java porque
+     * dependem de qual dos 7 tipos esta ativo, nao sao chrome fixo de menu. */
+    private void renderTypeSpecific(Reward reward, GuiLayoutLoader.GuiLayout layout) {
+        int slotY = layout.firstSlot('Y');
+        int slotZ = layout.firstSlot('Z');
         switch (reward.getType()) {
             case ITEM -> {
                 Material icon = reward.getItem() != null ? Material.matchMaterial(reward.getItem()) : null;
-                setItem(23, createItem(icon != null ? icon : Material.BARRIER, "<white><bold>Item",
+                setItem(slotY, createItem(icon != null ? icon : Material.BARRIER, "<white><bold>Item",
                         "<gray>Atual: <white>" + reward.getItem(),
                         "", "<yellow>Clique pra digitar Material/ID no chat"),
                         event -> promptText("crate-prompt-item", input ->
                                 mutate(config -> config.set(path("item"), input.trim()))));
-                setItem(24, createItem(Material.HOPPER, "<white><bold>Quantidade",
+                setItem(slotZ, createItem(Material.HOPPER, "<white><bold>Quantidade",
                         "<gray>Atual: <white>" + (long) reward.getAmount(),
                         "", "<green>Esquerdo: <white>+1 (shift +8)", "<red>Direito: <white>-1 (shift -8)"), event -> {
                     double delta = event.isLeftClick() ? (event.isShiftClick() ? 8 : 1) : (event.isShiftClick() ? -8 : -1);
@@ -186,7 +175,7 @@ public final class RewardEditMenu extends BaseGui {
                 });
             }
             case MONEY -> {
-                setItem(23, createItem(Material.SUNFLOWER, "<white><bold>Moeda",
+                setItem(slotY, createItem(Material.SUNFLOWER, "<white><bold>Moeda",
                         "<gray>Atual: <white>" + (reward.getCurrency() != null ? reward.getCurrency() : "gold"),
                         "", "<yellow>Clique pra digitar a moeda no chat"),
                         event -> promptText("crate-prompt-currency", input -> {
@@ -197,7 +186,7 @@ public final class RewardEditMenu extends BaseGui {
                     }
                     mutate(config -> config.set(path("currency"), currency));
                 }));
-                setItem(24, createItem(Material.GOLD_INGOT, "<white><bold>Valor",
+                setItem(slotZ, createItem(Material.GOLD_INGOT, "<white><bold>Valor",
                         "<gray>Atual: <white>" + (long) reward.getAmount(),
                         "", "<green>Esquerdo: <white>+10 (shift +500)", "<red>Direito: <white>-10 (shift -500)"), event -> {
                     double delta = event.isLeftClick() ? (event.isShiftClick() ? 500 : 10) : (event.isShiftClick() ? -500 : -10);
@@ -205,31 +194,31 @@ public final class RewardEditMenu extends BaseGui {
                     mutate(config -> config.set(path("amount"), value));
                 });
             }
-            case COMMAND -> setItem(23, createItem(Material.COMMAND_BLOCK, "<white><bold>Comando",
+            case COMMAND -> setItem(slotY, createItem(Material.COMMAND_BLOCK, "<white><bold>Comando",
                     "<gray>Atual: <white>" + (reward.getCommand() != null ? reward.getCommand() : "(nenhum)"),
                     "", "<gray>Use %player% - executado pelo console",
                     "<yellow>Clique pra digitar no chat"),
                     event -> promptText("crate-prompt-command", input ->
                             mutate(config -> config.set(path("command"), input))));
-            case VIP_DAYS -> setItem(23, createItem(Material.NETHER_STAR, "<white><bold>Dias de VIP",
+            case VIP_DAYS -> setItem(slotY, createItem(Material.NETHER_STAR, "<white><bold>Dias de VIP",
                     "<gray>Atual: <white>" + reward.getDays(),
                     "", "<green>Esquerdo: <white>+1 (shift +7)", "<red>Direito: <white>-1 (shift -7)"), event -> {
                 int delta = event.isLeftClick() ? (event.isShiftClick() ? 7 : 1) : (event.isShiftClick() ? -7 : -1);
                 int value = Math.max(0, reward.getDays() + delta);
                 mutate(config -> config.set(path("days"), value));
             });
-            case KIT -> setItem(23, createItem(Material.ENDER_CHEST, "<white><bold>Kit ID",
+            case KIT -> setItem(slotY, createItem(Material.ENDER_CHEST, "<white><bold>Kit ID",
                     "<gray>Atual: <white>" + (reward.getKitId() != null ? reward.getKitId() : "(nenhum)"),
                     "", "<yellow>Clique pra digitar o ID do kit no chat"),
                     event -> promptText("crate-prompt-kit", input ->
                             mutate(config -> config.set(path("kit_id"), input.trim()))));
             case PERMISSION -> {
-                setItem(23, createItem(Material.PAPER, "<white><bold>Permissao concedida",
+                setItem(slotY, createItem(Material.PAPER, "<white><bold>Permissao concedida",
                         "<gray>Atual: <white>" + (reward.getCommand() != null ? reward.getCommand() : "(nenhuma)"),
                         "", "<yellow>Clique pra digitar o node no chat"),
                         event -> promptText("crate-prompt-permission-node", input ->
                                 mutate(config -> config.set(path("command"), input.trim()))));
-                setItem(24, createItem(Material.CLOCK, "<white><bold>Duracao",
+                setItem(slotZ, createItem(Material.CLOCK, "<white><bold>Duracao",
                         "<gray>Atual: <white>" + (reward.getAmount() <= 0 ? "permanente" : (long) reward.getAmount() + "s"),
                         "", "<green>Esquerdo: <white>+60s (shift +3600s)",
                         "<red>Direito: <white>-60s (shift -3600s)", "<gray>0 = permanente"), event -> {

@@ -1,0 +1,75 @@
+# AlkaCrates - Layouts de GUI (posicoes configuraveis)
+# Regras (mesmo mecanismo do AlkaFish):
+#   # = borda preta (preenche automatico via fillBorder, uma letra pode sobrepor)
+#   _ = vazio (nunca preenchido por um role)
+#   Letras = slots com papel fixo (icone/texto vem de menus.yml.<menu>.<papel>)
+#   0 = slot de lista dinamica (crates, keys, recompensas - conteudo real, nao chrome)
+
+alkacrates-admin:
+  rows: 6
+  layout:
+    - "####B####"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "#########"
+  # B=criar nova crate, 0=crate cadastrada (ate 28, pagina unica)
+
+alkacrates-preview:
+  rows: 6
+  layout:
+    - "#########"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "#########"
+  # 0=recompensa da crate (view-only)
+
+alkacrates-backpack:
+  rows: 4
+  layout:
+    - "#########"
+    - "#0000000#"
+    - "#0000000#"
+    - "#########"
+  # 0=key do jogador (fisica+virtual, ate 14); se a lista estiver vazia, o 4o slot
+  # (posicao central, mesmo lugar do antigo slot 13 fixo) vira o icone "sem keys"
+
+alkacrates-crate-edit:
+  rows: 4
+  layout:
+    - "#########"
+    - "#NEISPMR#"
+    - "#LKJOF__#"
+    - "#D__V___#"
+  # N=nome, E=engine, I=item de exibicao, S=escala, P=preco, M=moeda, R=recompensas(link)
+  # L=lore da caixa, K=key-material, J=key-nome, O=key-lore, F=bloco fisico
+  # D=deletar, V=voltar
+
+alkacrates-reward-list:
+  rows: 6
+  layout:
+    - "####B####"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "#0000000#"
+    - "P###V###N"
+  # B=adicionar recompensa, 0=recompensa cadastrada (ate 28/pagina)
+  # P=pagina anterior, V=voltar, N=proxima pagina
+
+alkacrates-reward-edit:
+  rows: 6
+  layout:
+    - "#########"
+    - "#TNCGBWD#"
+    - "#XPR_YZSM"
+    - "#___E___#"
+    - "####V####"
+    - "#########"
+  # T=tipo, N=nome, C=chance, G=garantida(pity), B=broadcast, W=limite por jogador
+  # D=cooldown do limite, X=limite global, P=permissoes obrigatorias, R=permissoes restritas
+  # Y/Z=campos especificos do tipo (ver RewardType - continuam em Java, dependem do enum)
+  # S=soft pity incremento, M=soft pity teto, E=deletar, V=voltar

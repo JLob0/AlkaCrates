@@ -4,6 +4,7 @@ import com.alkacode.core.gui.BaseGui;
 import com.alkacode.crates.AlkaCrates;
 import com.alkacode.crates.crate.model.Crate;
 import com.alkacode.crates.crate.model.Reward;
+import com.alkacode.crates.gui.layout.GuiLayoutLoader;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Material;
@@ -14,6 +15,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /** Menu de preview do loot de uma crate. View-only. */
 public final class PreviewMenu extends BaseGui {
@@ -22,30 +24,23 @@ public final class PreviewMenu extends BaseGui {
     private final Crate crate;
 
     public PreviewMenu(AlkaCrates plugin, Player player, Crate crate) {
-        super(plugin, player, title(plugin, crate), 6, "alkacrates-preview");
+        super(plugin, player, plugin.getMenuConfig().title("alkacrates-preview.title", Map.of("crate", crate.getDisplayName())),
+                6, "alkacrates-preview");
         this.plugin = plugin;
         this.crate = crate;
     }
 
-    private static String title(AlkaCrates plugin, Crate crate) {
-        return "<gradient:#FFD700:#FFA500>Loot de " + crate.getDisplayName();
-    }
-
     @Override
     public void render() {
-        ItemStack border = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
-        ItemMeta borderMeta = border.getItemMeta();
-        borderMeta.displayName(Component.text(" "));
-        border.setItemMeta(borderMeta);
-        fillBorder(border);
+        GuiLayoutLoader.GuiLayout layout = plugin.getGuiLayoutLoader().getLayout("alkacrates-preview");
+        fillBorder(plugin.getMenuConfig().item("common.border", null));
 
         double totalChance = crate.getRewards().stream().mapToDouble(Reward::getChance).sum();
 
-        int slot = 10;
-        for (Reward reward : crate.getRewards()) {
-            if (slot >= 44) {
-                break;
-            }
+        List<Integer> slots = layout.findSlots('0');
+        List<Reward> rewards = crate.getRewards();
+        for (int i = 0; i < slots.size() && i < rewards.size(); i++) {
+            Reward reward = rewards.get(i);
             ItemStack resolved = plugin.getCrateService().getRewardDispatcher().resolveDisplayItem(reward);
             ItemStack item = resolved != null ? resolved.clone() : new ItemStack(Material.BARRIER);
             ItemMeta meta = item.getItemMeta();
@@ -74,8 +69,7 @@ public final class PreviewMenu extends BaseGui {
             }
             meta.lore(lore);
             item.setItemMeta(meta);
-            setItem(slot, item);
-            slot++;
+            setItem(slots.get(i), item);
         }
     }
 
