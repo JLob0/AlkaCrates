@@ -4,62 +4,82 @@ open-cooldown: 3
 # garantia de recompensa: 0 desativa. >0 = recompensa guaranteed a cada N aberturas.
 pity-opens: 0
 
+# keyframes/particles/phases SEMPRE em formato de MAPA (chave nomeada), nunca lista
+# "- item" - IdleAnimation/Phase/OpeningSequence#from() leem via
+# getConfigurationSection(...).getKeys(false), que exige secao nomeada. Bug real
+# encontrado 2026-09-03: essa secao tava em formato de lista (silenciosamente virava
+# 0 keyframes/particulas, sem erro no console) - so a abertura tinha fallback
+# hardcoded pra esse caso (ver OpeningSequence#fallback), o idle nao, entao a
+# animacao/particula parada da crate nunca rodava com esse config.yml padrao.
 default-animation:
   idle:
     loop: true
     keyframes:
-      - time: 0.0
+      start:
+        time: 0.0
         transform:
           offset: [ 0, 0, 0 ]
           rotation: [ 0, 0, 0 ]
           scale: [ 1.0, 1.0, 1.0 ]
-      - time: 2.0
+      meio:
+        time: 2.0
         transform:
           offset: [ 0, 0.3, 0 ]
           rotation: [ 0, 180, 0 ]
           scale: [ 1.1, 1.1, 1.1 ]
         easing: EASE_IN_OUT
-      - time: 4.0
+      fim:
+        time: 4.0
         transform:
           offset: [ 0, 0, 0 ]
           rotation: [ 0, 360, 0 ]
           scale: [ 1.0, 1.0, 1.0 ]
         easing: EASE_IN_OUT
     particles:
-      - type: WAX_ON
-        interval: 20
-        offset: [ 0.5, 0.5, 0.5 ]
-        count: 3
+      # shape/points/radius = forma parametrica calculada ao vivo (ver ParticleShape)
+      # em vez de burst num offset fixo - portado do DadaCratesPro, 2026-09-03.
+      anel:
+        type: WAX_ON
+        shape: RING
+        points: 16
+        radius: 0.8
+        interval: 4
   opening:
     phases:
-      - name: "start"
+      start:
+        name: "start"
         duration: 1.0
         transform:
           offset: [ 0, 0.5, 0 ]
           scale: [ 1.2, 1.2, 1.2 ]
         easing: EASE_OUT
         particles:
-          - type: END_ROD
+          rod:
+            type: END_ROD
             count: 20
         sound: BLOCK_BEACON_ACTIVATE
-      - name: "spin"
+      spin:
+        name: "spin"
         duration: 3.0
         transform:
           rotation: [ 0, 1080, 0 ]
           scale: [ 1.5, 1.5, 1.5 ]
         easing: EASE_OUT
         particles:
-          - type: PORTAL
+          portal:
+            type: PORTAL
             count: 50
             interval: 5
-      - name: "reveal"
+      reveal:
+        name: "reveal"
         duration: 1.5
         transform:
           offset: [ 0, 1.5, 0 ]
           scale: [ 2.0, 2.0, 2.0 ]
         easing: BOUNCE
         particles:
-          - type: TOTEM_OF_UNDYING
+          totem:
+            type: TOTEM_OF_UNDYING
             count: 100
         sound: ENTITY_PLAYER_LEVELUP
         trigger: REWARD_REVEAL

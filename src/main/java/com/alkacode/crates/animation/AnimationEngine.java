@@ -38,6 +38,8 @@ public final class AnimationEngine {
         stopIdle(display);
 
         BukkitRunnable runnable = new BukkitRunnable() {
+            long tick = 0;
+
             @Override
             public void run() {
                 if (!display.isValid()) {
@@ -48,7 +50,7 @@ public final class AnimationEngine {
                 double now = (System.currentTimeMillis() % totalMs) / 1000.0;
                 Transform transform = sample(idle.getKeyframes(), now, idle.getTotalDuration(), idle.isLoop());
                 display.applyTransform(transform.getOffset(), transform.getRotation(), transform.getScale());
-                spawnParticles(display.getLocation(), idle.getParticles());
+                spawnParticles(display.getLocation(), idle.getParticles(), tick++);
             }
         };
         BukkitTask task = runnable.runTaskTimer(plugin, 0L, 1L);
@@ -76,6 +78,7 @@ public final class AnimationEngine {
 
         BukkitRunnable runnable = new BukkitRunnable() {
             double elapsed = 0;
+            long tick = 0;
             Phase current = session.nextPhase();
             double phaseTime = current != null ? current.getDuration() : 0;
             Transform from = Transform.identity();
@@ -94,7 +97,7 @@ public final class AnimationEngine {
                         lerp(from.getOffset(), to.getOffset(), eased),
                         lerp(from.getRotation(), to.getRotation(), eased),
                         lerp(from.getScale(), to.getScale(), eased));
-                spawnParticles(display.getLocation(), current.getParticles());
+                spawnParticles(display.getLocation(), current.getParticles(), tick++);
                 if (t >= 1.0) {
                     if (current.getTrigger() == PhaseTrigger.REWARD_REVEAL) {
                         finish();
@@ -178,15 +181,27 @@ public final class AnimationEngine {
         return out;
     }
 
-    private void spawnParticles(Location location, List<ParticleEffect> effects) {
+    private void spawnParticles(Location location, List<ParticleEffect> effects, long tick) {
         if (effects == null || effects.isEmpty() || location.getWorld() == null) {
             return;
         }
         World world = location.getWorld();
+        Location base = location.clone().add(0, 0.5, 0);
         for (ParticleEffect effect : effects) {
-            double[] off = effect.getOffset();
-            world.spawnParticle(effect.getParticle(), location.clone().add(0, 0.5, 0),
-                    effect.getCount(), off[0], off[1], off[2], effect.getSpeed());
+            if (effect.getShape() == ParticleShape.NONE) {
+                double[] off = effect.getOffset();
+                world.spawnParticle(effect.getParticle(), base, effect.getCount(), off[0], off[1], off[2], effect.getSpeed());
+                continue;
+            }
+            for (ParticleShapes.Point point : ParticleShapes.compute(effect.getShape(), effect.getShapePoints(), effect.getShapeRadius(), tick)) {
+                Location spawnAt = base.clone().add(point.x(), point.y(), point.z());
+                if (point.rgb() != null) {
+                    world.spawnParticle(Particle.DUST, spawnAt, 1, 0, 0, 0, 0,
+                            new Particle.DustOptions(org.bukkit.Color.fromRGB(point.rgb()), effect.getDustSize()));
+                } else {
+                    world.spawnParticle(effect.getParticle(), spawnAt, 1, 0, 0, 0, effect.getSpeed());
+                }
+            }
         }
     }
 }
