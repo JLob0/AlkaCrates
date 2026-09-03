@@ -29,5 +29,6 @@ public final class PlacedCrate {
     public Crate getCrate() { return crate; }
     public Location getLocation() { return location; }
     public CrateDisplay getDisplay() { return display; }
+    public void setDisplay(CrateDisplay display) { this.display = display; }
     public String getTag() { return tag; }
 }

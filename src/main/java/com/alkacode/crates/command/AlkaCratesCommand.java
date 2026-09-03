@@ -35,7 +35,7 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 0) {
             sender.sendMessage("/alkacrates place <crate> | remove [crate:tag] | list | reload | "
-                    + "givekey <player> <crate> <amount> [--virtual]");
+                    + "givekey <player> <crate> <amount> [--virtual] [--rolls=N]");
             return true;
         }
         switch (args[0].toLowerCase()) {
@@ -148,7 +148,7 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
 
     private boolean handleGiveKey(CommandSender sender, String[] args) {
         if (args.length < 4) {
-            sender.sendMessage("Uso: /alkacrates givekey <player> <crate> <amount> [--virtual]");
+            sender.sendMessage("Uso: /alkacrates givekey <player> <crate> <amount> [--virtual] [--rolls=N]");
             return true;
         }
         Player target = Bukkit.getPlayerExact(args[1]);
@@ -168,9 +168,24 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("Quantidade invalida.");
             return true;
         }
-        KeyType type = args.length >= 5 && args[4].equalsIgnoreCase("--virtual")
-                ? KeyType.VIRTUAL : KeyType.PHYSICAL;
-        plugin.getKeyService().giveKey(target, crate.getId(), amount, type);
+        KeyType type = KeyType.PHYSICAL;
+        int rolls = 1;
+        for (int i = 4; i < args.length; i++) {
+            if (args[i].equalsIgnoreCase("--virtual")) {
+                type = KeyType.VIRTUAL;
+            } else if (args[i].toLowerCase().startsWith("--rolls=")) {
+                try {
+                    // key que vale N rolagens por unidade (versao simplificada do
+                    // PICK_ONE/PICK_TWO do DadaCratesPro, sem GUI de selecao - ver
+                    // KeyService#createPhysicalKey). So funciona pra key fisica.
+                    rolls = Math.max(1, Integer.parseInt(args[i].substring("--rolls=".length())));
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("Valor invalido em --rolls=.");
+                    return true;
+                }
+            }
+        }
+        plugin.getKeyService().giveKey(target, crate.getId(), amount, type, rolls);
         plugin.getCratesMessages().send(sender, "crate-givekey-admin", Map.of(
                 "player", target.getName(),
                 "crate", crate.getDisplayName(),

@@ -10,6 +10,7 @@ import com.alkacode.crates.engine.CrateEngineType;
 import com.alkacode.crates.engine.PhysicalChestEngine;
 import com.alkacode.crates.engine.VanillaEngine;
 import org.bukkit.Location;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.sql.SQLException;
 import java.util.EnumMap;
@@ -21,9 +22,13 @@ import java.util.logging.Level;
  * pelo /alkacrates remove <crate>:<tag> sem precisar estar perto/mirando nela. */
 public final class CratePlacementService {
 
+    /** 600 ticks = 30s, mesmo intervalo do keep-alive do DadaCratesPro (auditado 2026-09-03). */
+    private static final long KEEP_ALIVE_INTERVAL_TICKS = 600L;
+
     private final AlkaCrates plugin;
     private final CrateEngine engine;
     private final Map<CrateEngineType, CrateEngine> engines = new EnumMap<>(CrateEngineType.class);
+    private BukkitTask keepAliveTask;
 
     public CratePlacementService(AlkaCrates plugin) {
         this.plugin = plugin;
@@ -136,6 +141,57 @@ public final class CratePlacementService {
             }
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "Falha ao carregar crates persistidas", e);
+        }
+    }
+
+    /**
+     * Recria o display de uma crate colocada se a entidade principal morreu (chunk
+     * unload em edge case, /kill @e por engano, conflito de outro plugin) - sem
+     * precisar de /alkacrates reload completo (que re-coloca TODAS as crates,
+     * disruptivo). Gap real encontrado auditando o HologramManager do DadaCratesPro
+     * (2026-09-03): antes disso so existia isValid() pra CANCELAR a animacao quando
+     * a entidade morria, nada pra recria-la depois. Limitacao conhecida: isValid()
+     * so olha a entidade PRINCIPAL do display (itemDisplay/modelEntity/interaction,
+     * ver CrateDisplay#isValid) - se so o hologram (TextDisplay) morrer sozinho e o
+     * resto sobreviver, esse heal nao detecta (CrateDisplay nao expoe validade por
+     * componente separado hoje).
+     */
+    private boolean healIfInvalid(PlacedCrate placed) {
+        CrateDisplay current = placed.getDisplay();
+        if (current != null && current.isValid()) {
+            return false;
+        }
+        plugin.getAnimationEngine().stopIdle(current);
+        CrateDisplay fresh = getEngine(placed.getCrate().getEngineType()).createDisplay(placed.getCrate(), placed.getLocation());
+        if (fresh == null || !fresh.isValid()) {
+            plugin.getLogger().warning("Falha ao recriar display da crate " + placed.getTag()
+                    + " (" + placed.getCrate().getId() + ") durante o keep-alive.");
+            return false;
+        }
+        placed.setDisplay(fresh);
+        plugin.getAnimationEngine().startIdle(fresh);
+        return true;
+    }
+
+    public void startKeepAlive() {
+        stopKeepAlive();
+        keepAliveTask = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+            int healed = 0;
+            for (PlacedCrate placed : plugin.getPlacedCrateManager().getAll()) {
+                if (healIfInvalid(placed)) {
+                    healed++;
+                }
+            }
+            if (healed > 0) {
+                plugin.getLogger().info("Keep-alive recriou " + healed + " display(s) de crate que tinham morrido.");
+            }
+        }, KEEP_ALIVE_INTERVAL_TICKS, KEEP_ALIVE_INTERVAL_TICKS);
+    }
+
+    public void stopKeepAlive() {
+        if (keepAliveTask != null) {
+            keepAliveTask.cancel();
+            keepAliveTask = null;
         }
     }
 }

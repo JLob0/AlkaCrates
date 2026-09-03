@@ -147,6 +147,7 @@ public final class AlkaCrates extends AlkaPlugin {
         this.pityService = new PityService(this, pityManager);
         this.crateService.setPityService(pityService);
         this.placementService.loadAll();
+        this.placementService.startKeepAlive();
 
         getCommand("crate").setExecutor(new CrateCommand(this));
         getCommand("crate").setTabCompleter(new CrateCommand(this));
@@ -177,6 +178,9 @@ public final class AlkaCrates extends AlkaPlugin {
 
     @Override
     protected void onPluginDisable() {
+        if (placementService != null) {
+            placementService.stopKeepAlive();
+        }
         if (placedCrateManager != null) {
             placedCrateManager.removeAll();
         }

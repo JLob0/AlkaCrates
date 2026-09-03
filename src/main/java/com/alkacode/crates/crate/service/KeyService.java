@@ -21,15 +21,32 @@ public final class KeyService {
     private final AlkaCrates plugin;
     private final VirtualKeyManager virtualKeyManager;
     private final NamespacedKey keyPdc;
+    private final NamespacedKey rollsPdc;
 
     public KeyService(AlkaCrates plugin, VirtualKeyManager virtualKeyManager) {
         this.plugin = plugin;
         this.virtualKeyManager = virtualKeyManager;
         this.keyPdc = new NamespacedKey(plugin, "key");
+        this.rollsPdc = new NamespacedKey(plugin, "key-rolls");
     }
 
     /** Cria um item de key fisica com PDC alkacrates:key=<crate_id> - material/nome/lore configuraveis por crate (key.*). */
     public ItemStack createPhysicalKey(String crateId, int amount) {
+        return createPhysicalKey(crateId, amount, 1);
+    }
+
+    /**
+     * Key fisica que vale {@code rolls} rolagens independentes por unidade consumida
+     * (1 = normal). Versao simplificada do PICK_ONE/PICK_TWO do DadaCratesPro
+     * (auditado 2026-09-03): la e uma sessao de GUI multi-tick com selecao de slots
+     * em branco + animacao de roleta antes de revelar - decisao deliberada do usuario
+     * (2026-09-03) de NAO trazer essa sessao de volta (round 3 desse projeto ja
+     * removeu multi-tick opening de proposito, depois de um bug de knockback vindo
+     * exatamente dessa classe de complexidade). Mesmo resultado final (N premios por
+     * 1 key), sem UI extra - CrateService#openCrate ja rola/entrega em loop, so
+     * precisava saber quantas vezes rolar por key consumida.
+     */
+    public ItemStack createPhysicalKey(String crateId, int amount, int rolls) {
         Crate crate = plugin.getCratesConfig().getCrate(crateId);
         Material material = crate != null ? org.bukkit.Material.matchMaterial(crate.getKeyMaterial()) : null;
         ItemStack item = new ItemStack(material != null ? material : Material.TRIPWIRE_HOOK, amount);
@@ -47,11 +64,27 @@ public final class KeyService {
                 lore.add(MiniMessage.miniMessage().deserialize("<!i>" + line));
             }
         }
+        int safeRolls = Math.max(1, rolls);
+        if (safeRolls > 1) {
+            lore.add(MiniMessage.miniMessage().deserialize("<!i><gray>Vale <yellow>" + safeRolls + "x</yellow> premios por uso"));
+        }
         meta.lore(lore);
 
         meta.getPersistentDataContainer().set(keyPdc, PersistentDataType.STRING, crateId);
+        if (safeRolls > 1) {
+            meta.getPersistentDataContainer().set(rollsPdc, PersistentDataType.INTEGER, safeRolls);
+        }
         item.setItemMeta(meta);
         return item;
+    }
+
+    /** Quantas rolagens essa key fisica vale (1 = normal, sem tag). */
+    public int getKeyRolls(ItemStack item) {
+        if (item == null || !item.hasItemMeta()) {
+            return 1;
+        }
+        Integer value = item.getItemMeta().getPersistentDataContainer().get(rollsPdc, PersistentDataType.INTEGER);
+        return value == null ? 1 : Math.max(1, value);
     }
 
     public boolean isPhysicalKey(ItemStack item, String crateId) {
@@ -71,8 +104,13 @@ public final class KeyService {
 
     /** Entrega key fisica (inventario) ou virtual (cache + banco). */
     public void giveKey(Player player, String crateId, int amount, KeyType type) {
+        giveKey(player, crateId, amount, type, 1);
+    }
+
+    /** rolls>1 so tem efeito em key FISICA (virtual nao carrega a tag, ver createPhysicalKey/getKeyRolls). */
+    public void giveKey(Player player, String crateId, int amount, KeyType type, int rolls) {
         if (type == KeyType.PHYSICAL) {
-            player.getInventory().addItem(createPhysicalKey(crateId, amount));
+            player.getInventory().addItem(createPhysicalKey(crateId, amount, rolls));
         } else {
             virtualKeyManager.addKeys(player.getUniqueId(), crateId, amount);
         }
@@ -90,6 +128,22 @@ public final class KeyService {
             return false;
         }
         return virtualKeyManager.consumeKey(player.getUniqueId(), crateId);
+    }
+
+    /** Consome uma key e retorna quantas rolagens ela vale (getKeyRolls da unidade
+     * consumida - key virtual nao carrega essa tag, sempre vale 1). 0 = nao tinha key. */
+    public int consumeKeyForRolls(Player player, String crateId, KeyType type) {
+        if (type == KeyType.PHYSICAL) {
+            for (ItemStack item : player.getInventory().getContents()) {
+                if (isPhysicalKey(item, crateId)) {
+                    int rolls = getKeyRolls(item);
+                    item.setAmount(item.getAmount() - 1);
+                    return rolls;
+                }
+            }
+            return 0;
+        }
+        return virtualKeyManager.consumeKey(player.getUniqueId(), crateId) ? 1 : 0;
     }
 
     /** Deposita ate `amount` keys fisicas no saldo virtual (banco de key da mochila). Retorna quantas depositou de fato. */

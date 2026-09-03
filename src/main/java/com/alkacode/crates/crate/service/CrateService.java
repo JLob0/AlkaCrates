@@ -74,16 +74,23 @@ public final class CrateService {
         Map<String, Integer> summary = new LinkedHashMap<>();
         int opened = 0;
         for (int i = 0; i < amount; i++) {
-            if (!plugin.getKeyService().consumeKey(player, crate.getId(), keyType)) {
+            // key "multi" (KeyService#createPhysicalKey com rolls>1) vale mais de uma
+            // rolagem por unidade - versao simplificada do PICK_ONE/PICK_TWO do
+            // DadaCratesPro (2026-09-03), mesmo resultado (N premios por 1 key) sem
+            // trazer de volta sessao de GUI multi-tick (ver KeyService#createPhysicalKey).
+            int rolls = plugin.getKeyService().consumeKeyForRolls(player, crate.getId(), keyType);
+            if (rolls <= 0) {
                 break;
             }
-            Reward reward = rollAndDeliver(player, crate);
-            if (reward == null) {
-                continue;
+            for (int r = 0; r < rolls; r++) {
+                Reward reward = rollAndDeliver(player, crate);
+                if (reward == null) {
+                    continue;
+                }
+                opened++;
+                String label = reward.getDisplayName() != null ? reward.getDisplayName() : reward.getId();
+                summary.merge(label, 1, Integer::sum);
             }
-            opened++;
-            String label = reward.getDisplayName() != null ? reward.getDisplayName() : reward.getId();
-            summary.merge(label, 1, Integer::sum);
         }
         if (opened == 0) {
             plugin.getCratesMessages().send(player, "crate-no-key", Map.of("crate", crate.getDisplayName()));
