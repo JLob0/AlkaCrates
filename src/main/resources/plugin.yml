@@ -19,4 +19,4 @@ permissions:
     default: op
   alkacrates.use:
     description: Permite abrir crates.
-    default: true
+    default: op
