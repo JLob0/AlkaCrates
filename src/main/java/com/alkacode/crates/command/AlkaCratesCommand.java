@@ -5,6 +5,7 @@ import com.alkacode.crates.crate.model.Crate;
 import com.alkacode.crates.crate.model.KeyType;
 import com.alkacode.crates.crate.placement.PlacedCrate;
 import com.alkacode.crates.menu.AdminMenu;
+import com.alkacode.crates.util.Facing;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
@@ -53,7 +54,7 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
                     return true;
                 }
                 if (args.length < 2) {
-                    sender.sendMessage("Uso: /alkacrates place <crate>");
+                    sender.sendMessage("Uso: /alkacrates place <crate> [norte|sul|leste|oeste]");
                     return true;
                 }
                 Crate crate = plugin.getCratesConfig().getCrate(args[1]);
@@ -66,7 +67,15 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
                     plugin.getCratesMessages().send(sender, "crate-invalid-location");
                     return true;
                 }
-                String tag = plugin.getPlacementService().placeAt(crate, placementLocation(target));
+                // args[2] opcional: direcao explicita (norte/sul/leste/oeste). Sem isso,
+                // cai no yaw do player no momento do /place (comportamento antigo).
+                Float explicitYaw = args.length >= 3 ? Facing.parseYaw(args[2]) : null;
+                if (args.length >= 3 && explicitYaw == null) {
+                    sender.sendMessage("Direcao invalida: " + args[2] + " (use norte, sul, leste ou oeste)");
+                    return true;
+                }
+                float yaw = explicitYaw != null ? explicitYaw : player.getLocation().getYaw();
+                String tag = plugin.getPlacementService().placeAt(crate, placementLocation(target, yaw));
                 if (tag != null) {
                     plugin.getCratesMessages().send(sender, "crate-placed",
                             Map.of("crate", crate.getDisplayName(), "tag", tag));
@@ -141,9 +150,11 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
      * Localizacao onde a crate fica: bloco ACIMA do bloco mirado, centralizado.
      * Assim a crate assenta sobre o topo do bloco (ex.: grama) em vez de entrar nele.
      */
-    private Location placementLocation(Block target) {
-        return target.getRelative(org.bukkit.block.BlockFace.UP)
+    private Location placementLocation(Block target, float yaw) {
+        Location location = target.getRelative(org.bukkit.block.BlockFace.UP)
                 .getLocation().add(0.5, 0, 0.5);
+        location.setYaw(yaw);
+        return location;
     }
 
     private boolean handleGiveKey(CommandSender sender, String[] args) {
@@ -222,7 +233,14 @@ public final class AlkaCratesCommand implements CommandExecutor, TabCompleter {
                         completions.add(placed.getCrate().getId() + ":" + placed.getTag()));
             }
         } else if (args.length == 3) {
-            plugin.getCratesConfig().getCrates().forEach(c -> completions.add(c.getId()));
+            if (args[0].equalsIgnoreCase("place")) {
+                completions.add("norte");
+                completions.add("sul");
+                completions.add("leste");
+                completions.add("oeste");
+            } else {
+                plugin.getCratesConfig().getCrates().forEach(c -> completions.add(c.getId()));
+            }
         } else if (args.length == 5) {
             completions.add("--virtual");
         }

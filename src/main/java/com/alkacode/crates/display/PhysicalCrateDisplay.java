@@ -1,10 +1,14 @@
 package com.alkacode.crates.display;
 
 import com.alkacode.crates.crate.model.Crate;
+import com.alkacode.crates.util.Facing;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Directional;
 import org.bukkit.inventory.ItemStack;
 
 /**
@@ -23,6 +27,25 @@ public final class PhysicalCrateDisplay extends CrateDisplay {
         this.originalBlock = block.getState();
         Material blockMaterial = Material.matchMaterial(crate.getBlockMaterial());
         block.setType(blockMaterial != null && blockMaterial.isBlock() ? blockMaterial : Material.CHEST, false);
+        applyFacing(location.getYaw());
+    }
+
+    /**
+     * Vira o bau (frente/dobradica) pra direcao escolhida no /alkacrates place - sem isso
+     * todo bau nascia com a mesma direcao padrao do Bukkit, sem controle nenhum. Materiais
+     * sem Directional (ex: um bloco decorativo custom via ItemsAdder) simplesmente ignoram.
+     */
+    private void applyFacing(float yaw) {
+        BlockData data = block.getBlockData();
+        if (!(data instanceof Directional directional)) {
+            return;
+        }
+        BlockFace face = Facing.yawToBlockFace(yaw);
+        if (!directional.getFaces().contains(face)) {
+            return;
+        }
+        directional.setFacing(face);
+        block.setBlockData(directional, false);
     }
 
     @Override
