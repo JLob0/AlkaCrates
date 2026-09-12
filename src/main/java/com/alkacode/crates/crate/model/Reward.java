@@ -4,7 +4,9 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Recompensa generica de uma crate. Um so objeto cobre todos os tipos (ITEM,
@@ -32,12 +34,31 @@ public final class Reward {
     private final List<String> restrictedPermissions;
     private final double pityIncrement;
     private final double pityMaxChance;
+    private final ItemOptions itemOptions;
+
+    /**
+     * Meta extra pro reward de ITEM (aplicado por cima do material). Encantamentos pela chave
+     * MODERNA (sharpness, unbreaking, protection, efficiency, fortune, looting...) so resolvem
+     * encantamento VANILLA. glow = brilho cosmetico sem encanto real. aeBook (opcional) substitui
+     * o item base inteiro por um livro de encantamento de VERDADE do AdvancedEnchantments (softdepend)
+     * via AEAPI#createEnchantmentBook - display-name/lore/glow ainda se aplicam por cima do livro
+     * gerado. Campos vazios/null = nao mexe (aditivo).
+     */
+    public record ItemOptions(List<String> lore, Map<String, Integer> enchantments, boolean unbreakable,
+                              Integer customModelData, boolean glow, List<String> itemFlags,
+                              AeBook aeBook) {
+    }
+
+    /** enchant = nome interno do encantamento no AE (ver AEAPI#getAllEnchantments/isAnEnchantment).
+     * success/failure = "Success Rate"/"Destroy Rate" em % que aparecem no proprio livro do AE. */
+    public record AeBook(String enchant, int level, int success, int failure) {
+    }
 
     public Reward(String id, RewardType type, String item, String currency, double amount,
                   String command, String tier, int days, String kitId, double chance, String displayName, boolean guaranteed,
                   int winLimit, long winLimitCooldownSeconds, int globalWinLimit, boolean broadcast,
                   List<String> requiredPermissions, List<String> restrictedPermissions,
-                  double pityIncrement, double pityMaxChance) {
+                  double pityIncrement, double pityMaxChance, ItemOptions itemOptions) {
         this.id = id;
         this.type = type;
         this.item = item;
@@ -58,6 +79,7 @@ public final class Reward {
         this.restrictedPermissions = restrictedPermissions;
         this.pityIncrement = pityIncrement;
         this.pityMaxChance = pityMaxChance;
+        this.itemOptions = itemOptions;
     }
 
     public static Reward from(ConfigurationSection section) {
@@ -84,9 +106,46 @@ public final class Reward {
         // que essa reward NAO ganha, a chance efetiva sobe esse tanto, ate o teto abaixo.
         double pityIncrement = section.getDouble("pity-increment", 0);
         double pityMaxChance = section.getDouble("pity-max-chance", 100.0);
+
+        // Meta do item (lore/encantamentos/unbreakable/custom-model-data/glow/flags).
+        ItemOptions itemOptions = null;
+        if (type == RewardType.ITEM) {
+            List<String> lore = section.getStringList("lore");
+            Map<String, Integer> enchantments = new LinkedHashMap<>();
+            ConfigurationSection enchSection = section.getConfigurationSection("enchantments");
+            if (enchSection != null) {
+                // formato mapa: "sharpness: 5"
+                for (String key : enchSection.getKeys(false)) {
+                    enchantments.put(key, enchSection.getInt(key));
+                }
+            } else {
+                // formato lista: "- sharpness:5"
+                for (String entry : section.getStringList("enchantments")) {
+                    String[] parts = entry.split(":");
+                    if (parts.length >= 2) {
+                        try {
+                            enchantments.put(parts[0].trim(), Integer.parseInt(parts[1].trim()));
+                        } catch (NumberFormatException ignored) {
+                        }
+                    }
+                }
+            }
+            boolean unbreakable = section.getBoolean("unbreakable", false);
+            Integer customModelData = section.contains("custom-model-data") ? section.getInt("custom-model-data") : null;
+            boolean glow = section.getBoolean("glow", false);
+            List<String> itemFlags = section.getStringList("item-flags");
+            ConfigurationSection aeBookSection = section.getConfigurationSection("ae-book");
+            AeBook aeBook = aeBookSection == null ? null : new AeBook(
+                    aeBookSection.getString("enchant", ""),
+                    aeBookSection.getInt("level", 1),
+                    aeBookSection.getInt("success", 100),
+                    aeBookSection.getInt("failure", 0));
+            itemOptions = new ItemOptions(lore, enchantments, unbreakable, customModelData, glow, itemFlags, aeBook);
+        }
+
         return new Reward(id, type, item, currency, amount, command, tier, days, kitId, chance, displayName, guaranteed,
                 winLimit, winLimitCooldownSeconds, globalWinLimit, broadcast, requiredPermissions, restrictedPermissions,
-                pityIncrement, pityMaxChance);
+                pityIncrement, pityMaxChance, itemOptions);
     }
 
     /** Checa apenas as permissoes (required/restricted) - nao considera limites de win, isso e RewardWinManager. */
@@ -130,4 +189,5 @@ public final class Reward {
     public double getPityIncrement() { return pityIncrement; }
     public double getPityMaxChance() { return pityMaxChance; }
     public boolean hasSoftPity() { return pityIncrement > 0; }
+    public ItemOptions getItemOptions() { return itemOptions; }
 }

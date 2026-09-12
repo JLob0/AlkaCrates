@@ -120,6 +120,7 @@ public final class AlkaCrates extends AlkaPlugin {
         this.placedCrateManager = new PlacedCrateManager();
         this.economyHook = new AlkaEconomyHook(getServer());
         registerItemHooks();
+        com.alkacode.crates.hook.AdvancedEnchantmentsHook.init(getLogger());
 
         this.placementService = new CratePlacementService(this);
         if (getServer().getPluginManager().isPluginEnabled("ModelEngine")) {
